@@ -18,7 +18,9 @@ It will run on every push to `main` or `master`, and on every pull request.
 Checks included:
 
 - `gofmt`
-- `go test ./...`
+- `go test -v ./...`
+- `go test -v -cover ./...`
+- `go test -race ./...`
 - `go build ./...`
 
 ## Project files
@@ -34,5 +36,10 @@ Checks included:
 ```bash
 make fmt
 make test
+make testv
+make cover
+make race
 make build
+make check
+make ci
 ```
