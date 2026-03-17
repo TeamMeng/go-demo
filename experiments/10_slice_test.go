@@ -23,4 +23,7 @@ func TestSlice(t *testing.T) {
 
 	s = append(s, "d")
 	fmt.Println(s)
+
+	a := s[0:1]
+	fmt.Println(a)
 }
