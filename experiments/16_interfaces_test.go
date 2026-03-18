@@ -1,0 +1,45 @@
+package experiments
+
+import (
+	"fmt"
+	"math"
+	"testing"
+)
+
+type geometry interface {
+	area() float64
+	perimeter() float64
+}
+
+type rectangle struct {
+	width  float64
+	height float64
+}
+
+type circle struct {
+	radius float64
+}
+
+func (r rectangle) area() float64 {
+	return r.width * r.height
+}
+
+func (r rectangle) perimeter() float64 {
+	return 2 * (r.width + r.height)
+}
+
+func (c circle) area() float64 {
+	return math.Pi * c.radius * c.radius
+}
+
+func (c circle) perimeter() float64 {
+	return 2 * math.Pi * c.radius
+}
+
+func TestInterface(t *testing.T) {
+	r := rectangle{width: 3.0, height: 4.0}
+	c := circle{radius: 5.0}
+
+	fmt.Printf("rectangle area %f and perimeter %f\n", r.area(), r.perimeter())
+	fmt.Printf("circle area %f and perimeter %f\n", c.area(), c.perimeter())
+}
