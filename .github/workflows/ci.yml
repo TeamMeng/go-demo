@@ -21,8 +21,28 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - name: Install typos
+        uses: taiki-e/install-action@v2
+        with:
+          tool: typos
+
       - name: Verify formatting
         run: test -z "$(gofmt -l .)"
 
-      - name: Run project checks
-        run: make check
+      - name: Check typos
+        run: typos
+
+      - name: Run go vet
+        run: go vet ./...
+
+      - name: Run tests
+        run: go test -v ./...
+
+      - name: Run coverage tests
+        run: go test -v -cover ./...
+
+      - name: Run race tests
+        run: go test -race ./...
+
+      - name: Build
+        run: go build ./...

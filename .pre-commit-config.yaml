@@ -1,0 +1,50 @@
+fail_fast: false
+default_install_hook_types: [pre-commit, commit-msg]
+default_stages: [pre-commit, manual]
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.3.0
+    hooks:
+      - id: check-byte-order-marker
+      - id: check-case-conflict
+      - id: check-merge-conflict
+      - id: check-symlinks
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+      - id: trailing-whitespace
+
+  - repo: local
+    hooks:
+      - id: typos
+        name: typos
+        description: Check for common misspellings.
+        entry: typos
+        language: system
+        files: \.*$
+        pass_filenames: false
+
+      - id: gofmt
+        name: gofmt
+        description: Format all Go files with gofmt.
+        entry: bash -c 'gofmt -w $(find . -type f -name "*.go" -not -path "./.git/*")'
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: go-vet
+        name: go vet
+        description: Check Go packages with go vet.
+        entry: bash -c 'ROOT="$(pwd)"; GOCACHE="${GOCACHE:-$ROOT/.gocache}" GOMODCACHE="${GOMODCACHE:-$ROOT/.gomodcache}" go vet ./...'
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: go-test
+        name: go test
+        description: Run Go tests.
+        entry: bash -c 'ROOT="$(pwd)"; GOCACHE="${GOCACHE:-$ROOT/.gocache}" GOMODCACHE="${GOMODCACHE:-$ROOT/.gomodcache}" go test ./...'
+        language: system
+        pass_filenames: false
+        always_run: true

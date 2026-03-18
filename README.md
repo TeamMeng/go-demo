@@ -9,6 +9,36 @@ go run .
 go test ./...
 ```
 
+## Pre-commit
+
+Install the git hooks:
+
+```bash
+pre-commit install
+pre-commit install --hook-type commit-msg
+```
+
+Run all checks manually:
+
+```bash
+pre-commit run --all-files
+```
+
+Configured hooks:
+
+- `check-byte-order-marker`
+- `check-case-conflict`
+- `check-merge-conflict`
+- `check-symlinks`
+- `check-yaml`
+- `end-of-file-fixer`
+- `mixed-line-ending`
+- `trailing-whitespace`
+- `typos`
+- `gofmt`
+- `go vet ./...`
+- `go test ./...`
+
 ## GitHub Actions
 
 The workflow file is at `.github/workflows/ci.yml`.
