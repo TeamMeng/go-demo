@@ -37,9 +37,14 @@ func (c circle) perimeter() float64 {
 }
 
 func TestInterface(t *testing.T) {
+	// 两个不同类型，只要方法集一致，就能表达相同抽象能力。
 	r := rectangle{width: 3.0, height: 4.0}
 	c := circle{radius: 5.0}
 
 	fmt.Printf("rectangle area %f and perimeter %f\n", r.area(), r.perimeter())
 	fmt.Printf("circle area %f and perimeter %f\n", c.area(), c.perimeter())
+
+	// 延伸练习：
+	// 1. 写一个 measure(g geometry) 函数，真正以接口作为参数。
+	// 2. 再增加一个 triangle 类型，让它也实现 geometry。
 }
