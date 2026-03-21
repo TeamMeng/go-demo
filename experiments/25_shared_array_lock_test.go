@@ -9,6 +9,10 @@ import (
 // TestConcurrencyWithoutLock 演示多个 goroutine 并发写入同一个 slice 时，
 // 如果没有任何同步保护，会产生数据竞争，长度结果也可能不稳定。
 func TestConcurrencyWithoutLock(t *testing.T) {
+	if isRaceEnabled {
+		t.Skip("skip intentional data race demo when running with -race")
+	}
+
 	var shared []int
 	var wg sync.WaitGroup
 

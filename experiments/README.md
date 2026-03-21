@@ -21,6 +21,8 @@ go test -run TestSlice -v ./experiments
 go test -run TestContext -v ./experiments
 ```
 
+如果使用 `go test -race`，`25_shared_array_lock_test.go` 里那个“故意不加锁”的示例会自动跳过，避免教学用例把整条测试流程标记为失败。
+
 如果本地对默认 Go 缓存目录有限制，可以临时指定缓存位置：
 
 ```bash
