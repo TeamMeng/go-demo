@@ -36,7 +36,7 @@ GOCACHE=$(pwd)/.gocache go test -v ./experiments/...
 3. 方法、接口与组合
 4. 并发原语与协作模型
 
-对应到文件，就是从 `1_variable_test.go` 一直看到 `23_context_test.go`。
+对应到文件，就是从 `1_variable_test.go` 一直看到 `24_chan_buffer_test.go`。
 
 ## 知识地图
 
@@ -44,14 +44,14 @@ GOCACHE=$(pwd)/.gocache go test -v ./experiments/...
 
 | 文件 | 主题 | 你会看到什么 |
 | --- | --- | --- |
-| [1_variable_test.go](/Users/meng/Desktop/code/go-github-actions-demo/experiments/1_variable_test.go) | 变量 | `var`、`:=`、类型推断 |
-| [2_constants_test.go](/Users/meng/Desktop/code/go-github-actions-demo/experiments/2_constants_test.go) | 常量 | `const`、显式类型与推断类型 |
-| [3_interfaces_test.go](/Users/meng/Desktop/code/go-github-actions-demo/experiments/3_interfaces_test.go) | 类型预热 | `struct` 和 `interface` 的基本语法形态 |
-| [4_func_test.go](/Users/meng/Desktop/code/go-github-actions-demo/experiments/4_func_test.go) | 函数 | 函数声明、返回值、简单断言 |
-| [5_multiple_return_values_test.go](/Users/meng/Desktop/code/go-github-actions-demo/experiments/5_multiple_return_values_test.go) | 多返回值 | Go 原生支持多个返回值 |
-| [6_if_else_test.go](/Users/meng/Desktop/code/go-github-actions-demo/experiments/6_if_else_test.go) | 条件分支 | `if / else` 的基本写法 |
-| [7_switch_test.go](/Users/meng/Desktop/code/go-github-actions-demo/experiments/7_switch_test.go) | `switch` | 值匹配 `switch` 与无表达式 `switch` |
-| [8_for_test.go](/Users/meng/Desktop/code/go-github-actions-demo/experiments/8_for_test.go) | 循环 | 传统循环、条件循环、`range`、无限循环 |
+| [1_variable_test.go](1_variable_test.go) | 变量 | `var`、`:=`、类型推断 |
+| [2_constants_test.go](2_constants_test.go) | 常量 | `const`、显式类型与推断类型 |
+| [3_interfaces_test.go](3_interfaces_test.go) | 类型预热 | `struct` 和 `interface` 的基本语法形态 |
+| [4_func_test.go](4_func_test.go) | 函数 | 函数声明、返回值、简单断言 |
+| [5_multiple_return_values_test.go](5_multiple_return_values_test.go) | 多返回值 | Go 原生支持多个返回值 |
+| [6_if_else_test.go](6_if_else_test.go) | 条件分支 | `if / else` 的基本写法 |
+| [7_switch_test.go](7_switch_test.go) | `switch` | 值匹配 `switch` 与无表达式 `switch` |
+| [8_for_test.go](8_for_test.go) | 循环 | 传统循环、条件循环、`range`、无限循环 |
 
 这一段的目标是先把 Go 的最小语法骨架搭起来。读完之后，至少应该对“怎么声明、怎么分支、怎么写函数、怎么循环”形成稳定直觉。
 
@@ -59,11 +59,11 @@ GOCACHE=$(pwd)/.gocache go test -v ./experiments/...
 
 | 文件 | 主题 | 你会看到什么 |
 | --- | --- | --- |
-| [9_array_test.go](/Users/meng/Desktop/code/go-github-actions-demo/experiments/9_array_test.go) | 数组 | 定长数组、长度属于类型、`len` |
-| [10_slice_test.go](/Users/meng/Desktop/code/go-github-actions-demo/experiments/10_slice_test.go) | 切片 | `nil` 切片、`make`、`len/cap`、`append`、切片表达式 |
-| [11_map_test.go](/Users/meng/Desktop/code/go-github-actions-demo/experiments/11_map_test.go) | 映射 | `make(map)`、读写、删除、清空、零值读取 |
-| [12_struct_test.go](/Users/meng/Desktop/code/go-github-actions-demo/experiments/12_struct_test.go) | 结构体 | 按字段名初始化、字段赋值 |
-| [13_pointer_test.go](/Users/meng/Desktop/code/go-github-actions-demo/experiments/13_pointer_test.go) | 指针 | 传值与传指针的区别 |
+| [9_array_test.go](9_array_test.go) | 数组 | 定长数组、长度属于类型、`len` |
+| [10_slice_test.go](10_slice_test.go) | 切片 | `nil` 切片、`make`、`len/cap`、`append`、切片表达式 |
+| [11_map_test.go](11_map_test.go) | 映射 | `make(map)`、读写、删除、清空、零值读取 |
+| [12_struct_test.go](12_struct_test.go) | 结构体 | 按字段名初始化、字段赋值 |
+| [13_pointer_test.go](13_pointer_test.go) | 指针 | 传值与传指针的区别 |
 
 这一段最关键的不是“会写语法”，而是开始理解 Go 的数据行为：
 
@@ -75,10 +75,10 @@ GOCACHE=$(pwd)/.gocache go test -v ./experiments/...
 
 | 文件 | 主题 | 你会看到什么 |
 | --- | --- | --- |
-| [14_struct_method_test.go](/Users/meng/Desktop/code/go-github-actions-demo/experiments/14_struct_method_test.go) | 方法 | 给类型绑定方法，值接收者与指针接收者并存 |
-| [15_receiver_test.go](/Users/meng/Desktop/code/go-github-actions-demo/experiments/15_receiver_test.go) | receiver 语义 | 值接收者修改副本，指针接收者修改原对象 |
-| [16_interfaces_test.go](/Users/meng/Desktop/code/go-github-actions-demo/experiments/16_interfaces_test.go) | 接口 | 用方法集表达抽象能力 |
-| [17_embed_test.go](/Users/meng/Desktop/code/go-github-actions-demo/experiments/17_embed_test.go) | 嵌入 | 通过组合复用字段和方法 |
+| [14_struct_method_test.go](14_struct_method_test.go) | 方法 | 给类型绑定方法，值接收者与指针接收者并存 |
+| [15_receiver_test.go](15_receiver_test.go) | receiver 语义 | 值接收者修改副本，指针接收者修改原对象 |
+| [16_interfaces_test.go](16_interfaces_test.go) | 接口 | 用方法集表达抽象能力 |
+| [17_embed_test.go](17_embed_test.go) | 嵌入 | 通过组合复用字段和方法 |
 
 这一段对应 Go 类型系统里最重要的几个思想：
 
@@ -88,19 +88,20 @@ GOCACHE=$(pwd)/.gocache go test -v ./experiments/...
 
 其中有两个点最值得反复看：
 
-- [15_receiver_test.go](/Users/meng/Desktop/code/go-github-actions-demo/experiments/15_receiver_test.go)：它直接解释了为什么很多方法会使用指针接收者
-- [17_embed_test.go](/Users/meng/Desktop/code/go-github-actions-demo/experiments/17_embed_test.go)：它体现了 Go 风格里的“组合优于继承”
+- [15_receiver_test.go](15_receiver_test.go)：它直接解释了为什么很多方法会使用指针接收者
+- [17_embed_test.go](17_embed_test.go)：它体现了 Go 风格里的“组合优于继承”
 
 ### 四、并发模型
 
 | 文件 | 主题 | 你会看到什么 |
 | --- | --- | --- |
-| [18_goroutine_test.go](/Users/meng/Desktop/code/go-github-actions-demo/experiments/18_goroutine_test.go) | goroutine | 并发启动任务，命名函数与匿名函数都可用 |
-| [19_channel_test.go](/Users/meng/Desktop/code/go-github-actions-demo/experiments/19_channel_test.go) | channel | 无缓冲与有缓冲 channel 的区别 |
-| [20_select_test.go](/Users/meng/Desktop/code/go-github-actions-demo/experiments/20_select_test.go) | `select` | 同时等待多个 channel 分支 |
-| [21_mutex_test.go](/Users/meng/Desktop/code/go-github-actions-demo/experiments/21_mutex_test.go) | `Mutex` | 用锁保护共享 map |
-| [22_wait_group_test.go](/Users/meng/Desktop/code/go-github-actions-demo/experiments/22_wait_group_test.go) | `WaitGroup` | 等待一组 goroutine 执行结束 |
-| [23_context_test.go](/Users/meng/Desktop/code/go-github-actions-demo/experiments/23_context_test.go) | `context` | 取消信号、超时模型的起点 |
+| [18_goroutine_test.go](18_goroutine_test.go) | goroutine | 并发启动任务，命名函数与匿名函数都可用 |
+| [19_channel_test.go](19_channel_test.go) | channel | 无缓冲与有缓冲 channel 的区别 |
+| [20_select_test.go](20_select_test.go) | `select` | 同时等待多个 channel 分支 |
+| [21_mutex_test.go](21_mutex_test.go) | `Mutex` | 用锁保护共享 map |
+| [22_wait_group_test.go](22_wait_group_test.go) | `WaitGroup` | 等待一组 goroutine 执行结束 |
+| [23_context_test.go](23_context_test.go) | `context` | 取消信号、超时模型的起点 |
+| [24_chan_buffer_test.go](24_chan_buffer_test.go) | buffered channel | 缓冲区容量、阻塞时机、关闭后的读取行为 |
 
 这几组实验连起来，基本就是 Go 并发编程的入门框架：
 
@@ -110,13 +111,15 @@ GOCACHE=$(pwd)/.gocache go test -v ./experiments/...
 - `Mutex` 负责保护共享状态
 - `WaitGroup` 负责收尾同步
 - `context` 负责取消与超时控制
+- buffered channel 帮你理解“通信队列”和“背压”是怎么来的
 
 这里有几个值得注意的小点：
 
-- [20_select_test.go](/Users/meng/Desktop/code/go-github-actions-demo/experiments/20_select_test.go) 使用了 `default`，所以是非阻塞轮询，更像概念演示
-- [21_mutex_test.go](/Users/meng/Desktop/code/go-github-actions-demo/experiments/21_mutex_test.go) 现在用更准确的命名表达 `Mutex` 示例
-- [22_wait_group_test.go](/Users/meng/Desktop/code/go-github-actions-demo/experiments/22_wait_group_test.go) 很适合继续延伸讨论循环变量捕获
-- [23_context_test.go](/Users/meng/Desktop/code/go-github-actions-demo/experiments/23_context_test.go) 已经留下了 `WithTimeout` 的扩展空间
+- [20_select_test.go](20_select_test.go) 使用了 `default`，所以是非阻塞轮询，更像概念演示
+- [21_mutex_test.go](21_mutex_test.go) 现在用更准确的命名表达 `Mutex` 示例
+- [22_wait_group_test.go](22_wait_group_test.go) 很适合继续延伸讨论循环变量捕获
+- [23_context_test.go](23_context_test.go) 已经留下了 `WithTimeout` 的扩展空间
+- [24_chan_buffer_test.go](24_chan_buffer_test.go) 把“有缓冲 channel”单独拆开，补了 `len/cap`、缓冲区满时的阻塞、`close` 后的 drain，以及 runtime 里环形缓冲区的直觉
 
 ## 这一组代码背后的 Go 思维
 
@@ -127,6 +130,8 @@ GOCACHE=$(pwd)/.gocache go test -v ./experiments/...
 第二，类型系统强调实用。结构体承担数据组织，方法承担行为，接口承担抽象，嵌入承担组合复用。
 
 第三，并发是语言的一等公民。不是外部框架补上的能力，而是从 `go`、`chan`、`select` 到 `context` 都直接进入语言日常用法。
+
+第四，Go 的并发原语虽然语法简单，但底层模型很具体。比如 buffered channel 并不是“自动异步”，而是一个固定容量的队列；队列满了就会产生背压，空了就会让接收方等待。
 
 ## 如果继续扩展，下一步建议补什么
 
@@ -139,8 +144,9 @@ GOCACHE=$(pwd)/.gocache go test -v ./experiments/...
 5. 泛型
 6. channel close
 7. `for range ch`
-8. `context.WithTimeout`
-9. `go test -race`
+8. channel 单向类型 `chan<-` / `<-chan`
+9. `context.WithTimeout`
+10. `go test -race`
 
 ## 总结
 
