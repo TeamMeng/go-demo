@@ -36,7 +36,7 @@ GOCACHE=$(pwd)/.gocache go test -v ./experiments/...
 3. 方法、接口与组合
 4. 并发原语与协作模型
 
-对应到文件，就是从 `1_variable_test.go` 一直看到 `25_shared_array_lock_test.go`。
+对应到文件，就是从 `1_variable_test.go` 一直看到 `26_block_test.go`。
 
 ## 知识地图
 
@@ -103,6 +103,7 @@ GOCACHE=$(pwd)/.gocache go test -v ./experiments/...
 | [23_context_test.go](23_context_test.go) | `context` | 取消信号、超时模型的起点 |
 | [24_chan_buffer_test.go](24_chan_buffer_test.go) | buffered channel | 缓冲区容量、阻塞时机、关闭后的读取行为 |
 | [25_shared_array_lock_test.go](25_shared_array_lock_test.go) | 共享切片与加锁 | 观察并发 `append` 的风险，以及 `Mutex` 如何保护共享切片 |
+| [26_block_test.go](26_block_test.go) | channel 阻塞 | 用最小示例观察缓冲区写满后发送方会卡住 |
 
 这几组实验连起来，基本就是 Go 并发编程的入门框架：
 
@@ -114,6 +115,7 @@ GOCACHE=$(pwd)/.gocache go test -v ./experiments/...
 - `context` 负责取消与超时控制
 - buffered channel 帮你理解“通信队列”和“背压”是怎么来的
 - `Mutex` 也可以直接保护切片这类共享内存，不只是 map
+- channel 在缓冲区写满后的阻塞行为，也可以先用最小示例直观看到
 
 这里有几个值得注意的小点：
 
@@ -123,6 +125,7 @@ GOCACHE=$(pwd)/.gocache go test -v ./experiments/...
 - [23_context_test.go](23_context_test.go) 已经留下了 `WithTimeout` 的扩展空间
 - [24_chan_buffer_test.go](24_chan_buffer_test.go) 把“有缓冲 channel”单独拆开，补了 `len/cap`、缓冲区满时的阻塞、`close` 后的 drain，以及 runtime 里环形缓冲区的直觉
 - [25_shared_array_lock_test.go](25_shared_array_lock_test.go) 把“共享内存需要同步”讲得更直接：对共享切片做并发 `append` 会产生数据竞争，加锁后才有稳定语义
+- [26_block_test.go](26_block_test.go) 保持成最小演示：先写满缓冲区，再观察下一次发送卡住以及后续日志不再出现
 
 ## 这一组代码背后的 Go 思维
 
