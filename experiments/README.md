@@ -36,7 +36,7 @@ GOCACHE=$(pwd)/.gocache go test -v ./experiments/...
 3. 方法、接口与组合
 4. 并发原语与协作模型
 
-对应到文件，就是从 `1_variable_test.go` 一直看到 `24_chan_buffer_test.go`。
+对应到文件，就是从 `1_variable_test.go` 一直看到 `25_shared_array_lock_test.go`。
 
 ## 知识地图
 
@@ -102,6 +102,7 @@ GOCACHE=$(pwd)/.gocache go test -v ./experiments/...
 | [22_wait_group_test.go](22_wait_group_test.go) | `WaitGroup` | 等待一组 goroutine 执行结束 |
 | [23_context_test.go](23_context_test.go) | `context` | 取消信号、超时模型的起点 |
 | [24_chan_buffer_test.go](24_chan_buffer_test.go) | buffered channel | 缓冲区容量、阻塞时机、关闭后的读取行为 |
+| [25_shared_array_lock_test.go](25_shared_array_lock_test.go) | 共享切片与加锁 | 观察并发 `append` 的风险，以及 `Mutex` 如何保护共享切片 |
 
 这几组实验连起来，基本就是 Go 并发编程的入门框架：
 
@@ -112,6 +113,7 @@ GOCACHE=$(pwd)/.gocache go test -v ./experiments/...
 - `WaitGroup` 负责收尾同步
 - `context` 负责取消与超时控制
 - buffered channel 帮你理解“通信队列”和“背压”是怎么来的
+- `Mutex` 也可以直接保护切片这类共享内存，不只是 map
 
 这里有几个值得注意的小点：
 
@@ -120,6 +122,7 @@ GOCACHE=$(pwd)/.gocache go test -v ./experiments/...
 - [22_wait_group_test.go](22_wait_group_test.go) 很适合继续延伸讨论循环变量捕获
 - [23_context_test.go](23_context_test.go) 已经留下了 `WithTimeout` 的扩展空间
 - [24_chan_buffer_test.go](24_chan_buffer_test.go) 把“有缓冲 channel”单独拆开，补了 `len/cap`、缓冲区满时的阻塞、`close` 后的 drain，以及 runtime 里环形缓冲区的直觉
+- [25_shared_array_lock_test.go](25_shared_array_lock_test.go) 把“共享内存需要同步”讲得更直接：对共享切片做并发 `append` 会产生数据竞争，加锁后才有稳定语义
 
 ## 这一组代码背后的 Go 思维
 
@@ -132,6 +135,8 @@ GOCACHE=$(pwd)/.gocache go test -v ./experiments/...
 第三，并发是语言的一等公民。不是外部框架补上的能力，而是从 `go`、`chan`、`select` 到 `context` 都直接进入语言日常用法。
 
 第四，Go 的并发原语虽然语法简单，但底层模型很具体。比如 buffered channel 并不是“自动异步”，而是一个固定容量的队列；队列满了就会产生背压，空了就会让接收方等待。
+
+第五，Go 并发并不意味着“多个 goroutine 同时改同一份数据也没问题”。只要开始共享内存，就必须明确同步策略。`map` 的并发写很容易触发明显错误，切片的并发 `append` 则更隐蔽，经常要借助 `go test -race` 才能把问题暴露得更直接。
 
 ## 如果继续扩展，下一步建议补什么
 
@@ -147,6 +152,8 @@ GOCACHE=$(pwd)/.gocache go test -v ./experiments/...
 8. channel 单向类型 `chan<-` / `<-chan`
 9. `context.WithTimeout`
 10. `go test -race`
+11. `RWMutex`
+12. 原子操作 `sync/atomic`
 
 ## 总结
 
@@ -154,3 +161,5 @@ GOCACHE=$(pwd)/.gocache go test -v ./experiments/...
 
 - 每个文件只解释一个明确主题
 - README 负责把这些主题组织成一条可阅读、可运行、可扩展的学习路径
+
+如果沿着当前目录继续补，最自然的一条线就是把“并发通信”和“共享内存同步”这两类问题再拆细一点：一边继续补 channel 关闭、单向 channel、超时控制；另一边继续补 race detector、`RWMutex`、原子操作。
