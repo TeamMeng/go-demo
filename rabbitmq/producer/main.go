@@ -22,9 +22,9 @@ func main() {
 
 	// 声明一个名为 "Hello" 的消息队列
 	queueName := "Hello"
-	// 参数说明：name="Hello"(队列名), durable=false(不持久化), autoDelete=false(不自动删除),
+	// 参数说明：name="Hello"(队列名), durable=true(持久化), autoDelete=false(不自动删除),
 	// exclusive=false(非独占), noWait=false(等待服务器响应), args=nil(额外参数)
-	ch.QueueDeclare(queueName, false, false, false, false, nil)
+	ch.QueueDeclare(queueName, true, false, false, false, nil)
 
 	go send("Hello Big", queueName, ch)
 	go send("Hello Small", queueName, ch)
