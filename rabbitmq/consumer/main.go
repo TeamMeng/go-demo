@@ -39,12 +39,24 @@ func receive(queueName string, ch *amqp.Channel, flag int) {
 	// 参数说明：queue="Hello"(队列名), consumer=""(消费者标签，自动生成),
 	// autoAck=false(不自动确认), exclusive=false(非独占), noLocal=false(接收本地消息),
 	// noWait=false(等待服务器响应), args=nil(额外参数)
-	deliveryCh, _ := ch.Consume(queueName, "", false, false, false, false, nil)
+	deliveryCh, _ := ch.Consume(
+		queueName,
+		"",
+		false, // autoack
+		false,
+		false,
+		false,
+		nil,
+	)
 
 	// 使用 for-range 循环持续监听消息通道
 	// 当有消息到达时，会打印消息内容到日志
+	var cnt int
 	for delivery := range deliveryCh {
+		cnt++
 		log.Printf("[%d] receive message [%s]", flag, delivery.Body)
-		delivery.Ack(false)
+		if cnt%10 == 0 {
+			delivery.Ack(true)
+		}
 	}
 }
