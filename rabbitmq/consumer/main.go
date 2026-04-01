@@ -11,52 +11,57 @@ import (
 func main() {
 	// 连接到 RabbitMQ 服务器，使用默认的 guest/guest 凭据
 	// 连接地址为本地主机的 5672 端口（RabbitMQ 默认端口）
-	conn, _ := amqp.Dial("amqp://guest:guest@localhost:5672")
+	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672")
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer conn.Close()
-
-	// 在连接上创建一个通信通道（Channel）
-	// Channel 是轻量级的连接，用于实际的 AMQP 操作
-	ch, _ := conn.Channel()
-	defer ch.Close()
 
 	// 声明一个名为 "Hello" 的消息队列
 	queueName := "Hello"
-	// 参数说明：name="Hello"(队列名), durable=false(不持久化), autoDelete=false(不自动删除),
-	// exclusive=false(非独占), noWait=false(等待服务器响应), args=nil(额外参数)
-	// 注意：如果队列已存在，此操作不会有任何影响；如果不存在，则会创建新队列
+	ch, _ := conn.Channel()
 	ch.QueueDeclare(queueName, false, false, false, false, nil)
+	ch.Close()
 
-	go receive(queueName, ch, 1)
-	go receive(queueName, ch, 2)
-	go receive(queueName, ch, 3)
-	var block chan struct{}
-	block <- struct{}{}
+	// 为每个消费者创建独立的 channel（AMQP channel 不是线程安全的）
+	for i := 1; i <= 3; i++ {
+		go receive(queueName, conn, i)
+	}
+
+	// 阻塞主进程，防止退出
+	select {}
 }
 
-func receive(queueName string, ch *amqp.Channel, flag int) {
+func receive(queueName string, conn *amqp.Connection, flag int) {
+	// 每个消费者创建独立的 channel
+	ch, err := conn.Channel()
+	if err != nil {
+		log.Printf("[%d] failed to open channel: %v", flag, err)
+		return
+	}
+	defer ch.Close()
 
 	// 开始消费队列中的消息
 	// 参数说明：queue="Hello"(队列名), consumer=""(消费者标签，自动生成),
 	// autoAck=false(不自动确认), exclusive=false(非独占), noLocal=false(接收本地消息),
 	// noWait=false(等待服务器响应), args=nil(额外参数)
-	deliveryCh, _ := ch.Consume(
+	deliveryCh, err := ch.Consume(
 		queueName,
 		"",
-		false, // autoack
-		false,
-		false,
-		false,
-		nil,
+		true,  // autoAck
+		false, // exclusive
+		false, // noLocal
+		false, // noWait
+		nil,   // args
 	)
+	if err != nil {
+		log.Printf("[%d] failed to register consumer: %v", flag, err)
+		return
+	}
 
 	// 使用 for-range 循环持续监听消息通道
 	// 当有消息到达时，会打印消息内容到日志
-	var cnt int
 	for delivery := range deliveryCh {
-		cnt++
 		log.Printf("[%d] receive message [%s]", flag, delivery.Body)
-		if cnt%10 == 0 {
-			delivery.Ack(true)
-		}
 	}
 }
