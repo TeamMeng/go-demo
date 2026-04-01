@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -41,14 +42,19 @@ func receive(queueName string, conn *amqp.Connection, flag int) {
 	}
 	defer ch.Close()
 
-	// 开始消费队列中的消息
-	// 参数说明：queue="Hello"(队列名), consumer=""(消费者标签，自动生成),
-	// autoAck=false(不自动确认), exclusive=false(非独占), noLocal=false(接收本地消息),
-	// noWait=false(等待服务器响应), args=nil(额外参数)
+	// 设置 prefetch count，每个消费者最多缓存 2 条未确认的消息
+	// 这样能实现真正的负载均衡：处理快的消费者会优先收到更多消息
+	err = ch.Qos(2, 0, false)
+	if err != nil {
+		log.Printf("[%d] failed to set QoS: %v", flag, err)
+		return
+	}
+
+	// 开始消费队列中的消息，autoAck=false 改为手动确认
 	deliveryCh, err := ch.Consume(
 		queueName,
 		"",
-		true,  // autoAck
+		false, // autoAck: false 表示手动确认，确保消息被处理后才从队列移除
 		false, // exclusive
 		false, // noLocal
 		false, // noWait
@@ -60,8 +66,11 @@ func receive(queueName string, conn *amqp.Connection, flag int) {
 	}
 
 	// 使用 for-range 循环持续监听消息通道
-	// 当有消息到达时，会打印消息内容到日志
 	for delivery := range deliveryCh {
 		log.Printf("[%d] receive message [%s]", flag, delivery.Body)
+		// 模拟处理耗时
+		time.Sleep(100 * time.Millisecond)
+		// 手动确认消息已处理
+		delivery.Ack(false)
 	}
 }
