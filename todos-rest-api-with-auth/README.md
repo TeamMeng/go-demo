@@ -10,6 +10,7 @@
 - **数据库支持**：PostgreSQL 持久化存储
 - **密码安全**：使用 bcrypt 进行密码哈希
 - **请求限流**：基于 Redis 滑动窗口算法的限流机制，保护 API 免受过度请求
+- **Token 绑定**：JWT Token 绑定到签发时的 User-Agent，防止 Token 被盗用
 
 ## 技术栈
 
@@ -398,6 +399,7 @@ A: 可能原因：
 1. JWT Token 已过期（默认 24 小时）
 2. 服务端 `JWT_SECRET` 与签发时不一致
 3. Token 格式不正确（确保使用 `Bearer <token>` 格式）
+4. 当前请求的 User-Agent 与签发 Token 时不一致（Token 绑定机制）
 
 ### Q: 注册时提示 "Email already registered"？
 
