@@ -1,3 +1,5 @@
 .gocache/
 .gomodcache/
 go-github-actions-demo
+.cache/
+.idea/

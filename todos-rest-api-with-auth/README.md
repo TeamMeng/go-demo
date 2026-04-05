@@ -9,6 +9,7 @@
 - **RESTful API**：标准的 REST 接口设计
 - **数据库支持**：PostgreSQL 持久化存储
 - **密码安全**：使用 bcrypt 进行密码哈希
+- **请求限流**：基于 Redis 滑动窗口算法的限流机制，保护 API 免受过度请求
 
 ## 技术栈
 
@@ -20,6 +21,8 @@
 | [JWT](https://github.com/golang-jwt/jwt) | 认证令牌 |
 | [bcrypt](https://golang.org/x/crypto/bcrypt) | 密码哈希 |
 | [godotenv](https://github.com/joho/godotenv) | 环境变量管理 |
+| [Redis](https://redis.io/) | 限流计数器存储 |
+| [go-redis](https://github.com/redis/go-redis) | Redis Go 客户端 |
 
 ## 项目结构
 
@@ -36,7 +39,13 @@ todos-rest-api-with-auth/
 │   │   ├── todo_handler.go     # Todo CRUD 接口
 │   │   └── user_handler.go     # 用户认证接口
 │   ├── middleware/             # 中间件
-│   │   └── auth_middleware.go  # JWT 认证中间件
+│   │   ├── auth_middleware.go  # JWT 认证中间件
+│   │   └── ratelimit/          # 限流中间件
+│   │       └── builder.go       # 限流中间件构建器
+│   ├── ratelimit/              # 限流核心实现
+│   │   ├── types.go            # 限流器接口定义
+│   │   ├── redis_slide_window.go # Redis 滑动窗口限流器
+│   │   └── slide_window.lua    # Lua 脚本（嵌入到 Go）
 │   ├── models/                 # 数据模型
 │   │   ├── todo.go
 │   │   └── user.go
@@ -54,6 +63,7 @@ todos-rest-api-with-auth/
 
 - Go 1.25+
 - PostgreSQL 14+
+- Redis 6+
 - (可选) make
 
 ## 快速开始
@@ -109,6 +119,57 @@ go run cmd/api/main.go
 
 服务启动后，访问 http://localhost:8000/ 看到欢迎消息即表示成功。
 
+### 6. 配置 Redis（限流功能）
+
+限流功能依赖 Redis，需确保 Redis 服务正在运行：
+
+```bash
+# macOS (使用 Homebrew)
+brew services start redis
+
+# 或 Docker 运行
+docker run -d -p 6379:6379 redis:latest
+```
+
+**限流配置说明：**
+
+| 配置项 | 说明 | 默认值 |
+|--------|------|--------|
+| 窗口时间 | 滑动窗口的时间范围 | 1 分钟 |
+| 请求限额 | 窗口内允许的最大请求数 | 5 次 |
+
+**在代码中使用限流中间件：**
+
+```go
+// 创建 Redis 客户端
+redisClient := redis.NewClient(&redis.Options{
+    Addr: "localhost:6379",
+})
+
+// 创建滑动窗口限流器（1分钟内最多5次请求）
+limiter := ratelimit.NewRedisSlidingWindowLimiter(redisClient, time.Minute, 5)
+
+// 使用构建器创建中间件
+rateMiddleware := ratelimit.NewBuilder(limiter).Build()
+
+// 注册到路由
+router.POST("/auth/login", rateMiddleware, handlers.LoginHandler(pool, cfg))
+```
+
+**自定义限流 Key：**
+
+默认使用客户端 IP 作为限流 key，可自定义：
+
+```go
+// 按用户ID限流
+rateMiddleware := ratelimit.NewBuilder(limiter).
+    SetKeyGenFunc(func(ctx *gin.Context) string {
+        userID := ctx.GetHeader("X-User-ID")
+        return "user-limit:" + userID
+    }).
+    Build()
+```
+
 ## API 文档
 
 ### 公开端点（无需认证）
@@ -153,6 +214,22 @@ Content-Type: application/json
     "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 }
 ```
+
+**限流响应（429 Too Many Requests）：**
+
+当请求超过限流阈值时，返回以下响应：
+
+```json
+{
+    "message": "Too Many Requests"
+}
+```
+
+**限流说明：**
+
+- 登录接口默认限流：1 分钟内最多 5 次请求
+- 使用 Redis 滑动窗口算法，确保高精度限流
+- 限流 key 默认基于客户端 IP 地址
 
 ### 受保护端点（需要 JWT Token）
 
@@ -325,6 +402,17 @@ A: 可能原因：
 ### Q: 注册时提示 "Email already registered"？
 
 A: 邮箱地址具有唯一约束，该邮箱已被其他用户注册。
+
+### Q: 登录时返回 429 Too Many Requests？
+
+A: 这是限流保护机制，说明在时间窗口内请求次数超过了限制。默认配置为每分钟最多 5 次登录尝试。等待一分钟后重试即可。
+
+### Q: 限流功能不生效？
+
+A: 请检查：
+1. Redis 服务是否正在运行
+2. Redis 连接地址是否正确（默认 localhost:6379）
+3. 检查 Redis 是否可以正常连接
 
 ## 许可证
 
