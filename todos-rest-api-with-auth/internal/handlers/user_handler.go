@@ -143,10 +143,13 @@ func LoginHandler(pool *pgxpool.Pool, cfg *config.Config) gin.HandlerFunc {
 		}
 
 		// 构造 JWT Claims，设置 24 小时有效期
+		// 注意：额外添加 user_agent 字段，将 Token 绑定到签发时的客户端 User-Agent。
+		// 若他人盗取 Token 并在不同 User-Agent 下使用，AuthMiddleware 会拒绝该请求，提升安全性。
 		claims := jwt.MapClaims{
-			"user_id": user.ID,
-			"email":   user.Email,
-			"exp":     time.Now().Add(24 * time.Hour).Unix(),
+			"user_id":    user.ID,
+			"email":      user.Email,
+			"exp":        time.Now().Add(24 * time.Hour).Unix(),
+			"user_agent": ctx.Request.UserAgent(),
 		}
 
 		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)

@@ -77,6 +77,17 @@ func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 			return
 		}
 
+		// 校验 Token 中绑定的 user_agent 与当前请求的 User-Agent 是否一致。
+		// 若不一致，说明 Token 已被盗用（在其他客户端使用），则拒绝请求。
+		// 这是一种 Token 绑定（Token Binding）安全策略，防止 Token 被窃取后跨客户端使用。
+		if user_agent, ok := Claims["user_agent"].(string); ok {
+			if user_agent != ctx.Request.UserAgent() {
+				ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token Claims"})
+				ctx.Abort()
+				return
+			}
+		}
+
 		// 从 Claims 中提取 user_id，并确保其为字符串类型
 		userID, ok := Claims["user_id"].(string)
 		if !ok {
