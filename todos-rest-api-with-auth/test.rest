@@ -1,6 +1,6 @@
 ### signin user (valid)
 # @name signin
-POST http://localhost:8000/auth/login
+POST http://localhost:8080/auth/login
 Content-Type: application/json
 
 {
@@ -11,7 +11,7 @@ Content-Type: application/json
 @token = {{signin.response.body.token}}
 
 ### invalid login with wrong password
-POST http://localhost:8000/auth/login
+POST http://localhost:8080/auth/login
 Content-Type: application/json
 
 {
@@ -24,10 +24,10 @@ GET http://localhost:8000/protected-test
 Authorization: Bearer {{token}}
 
 ### init
-GET http://localhost:8000/
+GET http://localhost:80/
 
 ### create todos
-POST http://localhost:8000/todos
+POST http://localhost:8080/todos
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
