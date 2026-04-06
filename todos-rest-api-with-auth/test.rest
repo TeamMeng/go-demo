@@ -1,6 +1,15 @@
+### signup user
+POST http://localhost:80/auth/register
+Content-Type: application/json
+
+{
+	"email": "TeamAlice@163.com",
+	"password": "123456"
+}
+
 ### signin user (valid)
 # @name signin
-POST http://localhost:8080/auth/login
+POST http://localhost:80/auth/login
 Content-Type: application/json
 
 {
@@ -11,7 +20,7 @@ Content-Type: application/json
 @token = {{signin.response.body.token}}
 
 ### invalid login with wrong password
-POST http://localhost:8080/auth/login
+POST http://localhost:80/auth/login
 Content-Type: application/json
 
 {
@@ -20,7 +29,7 @@ Content-Type: application/json
 }
 
 ### protected-test
-GET http://localhost:8000/protected-test
+GET http://localhost:80/protected-test
 Authorization: Bearer {{token}}
 
 ### init
@@ -37,7 +46,7 @@ Content-Type: application/json
 }
 
 ### create todos by miss title
-POST http://localhost:8000/todos
+POST http://localhost:80/todos
 Content-Type: application/json
 
 {
@@ -45,20 +54,20 @@ Content-Type: application/json
 }
 
 ### get all todos
-GET http://localhost:8000/todos
+GET http://localhost:80/todos
 Authorization: Bearer {{token}}
 
 
 ### get todo by id, valid id
-GET http://localhost:8000/todos/1
+GET http://localhost:80/todos/1
 Authorization: Bearer {{token}}
 
 
 ### get todo by id, invalid id
-GET http://localhost:8000/todos/100
+GET http://localhost:80/todos/100
 
 ### update todo
-PUT http://localhost:8000/todos/1
+PUT http://localhost:80/todos/1
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
@@ -69,16 +78,16 @@ Content-Type: application/json
 
 
 ### delete todo by id, valid id
-DELETE http://localhost:8000/todos/1
+DELETE http://localhost:80/todos/1
 Authorization: Bearer {{token}}
 
 
 ### delete todo by id, invalid id
-DELETE http://localhost:8000/todos/100
+DELETE http://localhost:80/todos/100
 
 
 ### register
-POST http://localhost:8000/auth/register
+POST http://localhost:80/auth/register
 Content-Type: application/json
 
 {
@@ -86,5 +95,5 @@ Content-Type: application/json
 	"password": "123456"
 }
 
-# curl -X GET http://localhost:8000/protected-test \
+# curl -X GET http://localhost:80/protected-test \
         # -H "Authorization: Bearer {{token}}

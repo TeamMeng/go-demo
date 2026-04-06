@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: webook-postgresql
+    labels:
+        app: webook-postgresql
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            app: webook-postgresql
+    template:
+        metadata:
+            name: webook-postgresql
+            labels:
+                app: webook-postgresql
+        spec:
+            containers:
+                -   name: webook-postgresql
+                    image: postgres:16
+                    imagePullPolicy: IfNotPresent
+                    env:
+                      - name: POSTGRES_USER
+                        value: postgres
+                      - name: POSTGRES_PASSWORD
+                        value: postgres
+                      - name: POSTGRES_DB
+                        value: todo_db
+                    ports:
+                        -   containerPort: 5432
+                            protocol: TCP
+            restartPolicy: Always

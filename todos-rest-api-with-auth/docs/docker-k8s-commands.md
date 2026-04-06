@@ -34,6 +34,44 @@ kubectl apply -f k8s-webook-service.yaml
 kubectl rollout status deployment/webook
 ```
 
+## 部署 PostgreSQL
+
+PostgreSQL 在 Kubernetes 中建议使用单独的 `Deployment` 和 `Service`。
+
+- `k8s-postgres-deployment.yaml` 负责启动 PostgreSQL 容器
+- `k8s-postgres-service.yaml` 负责在集群内暴露 `5432`
+- 数据库 `Service` 建议使用 `ClusterIP`，不要对外暴露为 `LoadBalancer`
+
+`k8s-postgres-deployment.yaml` 至少应包含以下环境变量：
+
+```yaml
+env:
+  - name: POSTGRES_USER
+    value: postgres
+  - name: POSTGRES_PASSWORD
+    value: postgres
+  - name: POSTGRES_DB
+    value: todo_db
+```
+
+应用容器则需要注入数据库连接串：
+
+```yaml
+env:
+  - name: PORT
+    value: "8080"
+  - name: DATABASE_URL
+    value: postgres://postgres:postgres@webook-postgresql:5432/todo_db?sslmode=disable
+```
+
+部署命令：
+
+```bash
+kubectl apply -f k8s-postgres-deployment.yaml
+kubectl apply -f k8s-postgres-service.yaml
+kubectl rollout status deployment/webook-postgresql
+```
+
 ## 查看资源
 
 ```bash
@@ -41,6 +79,7 @@ kubectl get deployments
 kubectl get pods
 kubectl get svc
 kubectl get endpoints webook
+kubectl get endpoints webook-postgresql
 ```
 
 ## 删除应用
@@ -95,6 +134,54 @@ kubectl apply -f k8s-webook-deployment.yaml
 kubectl apply -f k8s-webook-service.yaml
 kubectl rollout status deployment/webook
 ```
+
+如果你修改了 Go 代码而不是 YAML，还需要：
+
+1. 重新构建镜像
+2. 更新 `k8s-webook-deployment.yaml` 中的镜像 tag
+3. 再执行 `kubectl apply`
+
+例如：
+
+```bash
+docker build -t teammeng/webook:v0.0.2 .
+kubectl apply -f k8s-webook-deployment.yaml
+kubectl rollout status deployment/webook
+```
+
+如果 Deployment 文件内容没变，`kubectl apply` 会显示 `unchanged`，这时不会触发滚动更新。
+
+## 执行数据库迁移
+
+Kubernetes 中即使 PostgreSQL Pod 已经启动，数据库仍然可能是空的。此时如果直接调用注册接口，可能会看到：
+
+```text
+ERROR: relation "users" does not exist (SQLSTATE 42P01)
+```
+
+这表示数据库连接已经成功，但迁移脚本还没有执行。
+
+先找到 PostgreSQL Pod：
+
+```bash
+kubectl get pods -l app=webook-postgresql
+```
+
+然后在项目根目录执行迁移：
+
+```bash
+kubectl exec -i <postgres-pod-name> -- psql -U postgres -d todo_db < migrations/20260324131714_initial.sql
+```
+
+正常情况下会看到类似输出：
+
+```text
+CREATE TABLE
+CREATE INDEX
+ALTER TABLE
+```
+
+执行完成后再测试 `/auth/register`。
 
 ### 5. 验证
 
@@ -153,6 +240,16 @@ Kubernetes 找不到镜像。常见原因：
 - 镜像未构建
 - 镜像 tag 与 Deployment 中写的不一致
 - 当前 Kubernetes 集群不是 Docker Desktop，自然也看不到本地 Docker 镜像
+- PostgreSQL 镜像拉取过程中网络中断，例如 `unexpected EOF`
+
+如果 PostgreSQL Pod 一直报 `ErrImagePull` 或 `ImagePullBackOff`，可以先手动拉镜像：
+
+```bash
+docker pull postgres:16
+kubectl get pods -w
+```
+
+如果 `Deployment` 已经改成 `postgres:16`，但旧 Pod 仍然存在，等待新 Pod 创建并进入 `Running` 即可。
 
 ### Exec format error
 
@@ -167,6 +264,42 @@ Kubernetes 找不到镜像。常见原因：
 - Pod 日志是否为 `Listening and serving HTTP on :8080`
 - Deployment 是否注入了 `PORT=8080`
 - Service 的 `targetPort` 是否为 `8080`
+
+### Invalid credentials
+
+如果 `POST /auth/login` 返回：
+
+```json
+{
+  "error": "Invalid credentials"
+}
+```
+
+这通常表示：
+
+- 请求已经成功到达应用
+- 登录逻辑已经执行
+- 只是用户名或密码不正确
+
+这类报错通常不是 Kubernetes 端口或 Service 配置问题。
+
+### relation "users" does not exist
+
+如果 `POST /auth/register` 返回：
+
+```json
+{
+  "error": "Failed to create userERROR: relation \"users\" does not exist (SQLSTATE 42P01)"
+}
+```
+
+这表示：
+
+- 应用已经成功连接 PostgreSQL
+- 但是迁移脚本还没执行
+- 数据库中还没有 `users` 表
+
+按上面的“执行数据库迁移”步骤补跑 migration 即可。
 
 ## 注意事项
 

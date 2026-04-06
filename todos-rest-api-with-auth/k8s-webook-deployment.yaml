@@ -14,9 +14,11 @@
       spec:
         containers:
           - name: webook
-            image: teammeng/webook:v0.0.1
+            image: teammeng/webook:v0.0.2
             env:
               - name: PORT
                 value: "8080"
+              - name: DATABASE_URL
+                value: postgres://postgres:postgres@webook-postgresql:5432/todo_db?sslmode=disable
             ports:
               - containerPort: 8080
