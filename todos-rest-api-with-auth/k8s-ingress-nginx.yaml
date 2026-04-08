@@ -1,0 +1,34 @@
+# =============================================
+# Nginx Ingress 控制器
+# 用途：为 webook 应用提供 HTTP/HTTPS 外部访问入口
+# 依赖：需要提前部署 Nginx Ingress Controller
+# 关联 Service：webook（k8s-webook-service.yaml）
+# 关联 Deployment：webook（k8s-webook-deployment.yaml）
+# =============================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+    # Ingress 资源名称
+    name: webook-ingress
+    # 注解配置
+spec:
+    # Ingress Class 名称，指定使用 nginx 作为 Ingress 控制器
+    ingressClassName: nginx
+    #  Ingress 规则定义
+    rules:
+        # 主机规则：只处理 live.webook.com 域名的请求
+        - host: live.webook.com
+          http:
+            paths:
+              # 路径匹配：匹配所有以 / 开头的请求（前缀匹配）
+              -   path: /
+                  # 路径类型：Prefix（前缀匹配）
+                  pathType: Prefix
+                  # 后端服务配置
+                  backend:
+                    service:
+                      # 关联的 Service 名称（来自 k8s-webook-service.yaml）
+                      name: webook
+                      port:
+                        # Service 端口号
+                        number: 80

@@ -7,7 +7,7 @@ Content-Type: application/json
 	"password": "123456"
 }
 
-### signin user (valid)
+### signin user
 # @name signin
 POST http://localhost:80/auth/login
 Content-Type: application/json
@@ -97,3 +97,45 @@ Content-Type: application/json
 
 # curl -X GET http://localhost:80/protected-test \
         # -H "Authorization: Bearer {{token}}
+
+
+### use nginx address live.webook.com
+### signin user
+# @name signin
+POST http://live.webook.com/auth/login
+Content-Type: application/json
+
+{
+	"email": "TeamAlice@163.com",
+	"password": "123456"
+}
+### Set token variable
+@webook_token = {{signin.response.body.token}}
+
+### create todos
+POST http://live.webook.com/todos
+Authorization: Bearer {{webook_token}}
+Content-Type: application/json
+
+{
+	"title": "init",
+	"completed": true
+}
+
+### get todo by id, valid id
+GET http://live.webook.com/todos/1
+Authorization: Bearer {{webook_token}}
+
+### update todo
+PUT http://live.webook.com/todos/1
+Authorization: Bearer {{webook_token}}
+Content-Type: application/json
+
+{
+	"title": "update",
+	"completed": false
+}
+
+### delete todo by id, valid id
+DELETE http://live.webook.com/todos/1
+Authorization: Bearer {{webook_token}}

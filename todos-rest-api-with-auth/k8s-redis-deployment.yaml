@@ -1,0 +1,45 @@
+# =============================================
+# Redis Deployment
+# 用途：提供 webook 应用的高速缓存服务
+# 特性：单副本部署，用于存储会话和限速数据
+# 关联 Service：webook-redis（k8s-redis-service.yaml）
+# =============================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    # Deployment 名称
+    name: webook-redis
+    # 标签用于组织和选择
+    labels:
+        app: webook-redis
+spec:
+    # 副本数量：1（Redis 单副本适合缓存场景）
+    replicas: 1
+    # Pod 选择器：匹配带有 app: webook-redis 标签的 Pod
+    selector:
+        matchLabels:
+            app: webook-redis
+    # Pod 模板定义
+    template:
+        metadata:
+            # Pod 名称
+            name: webook-redis
+            # Pod 标签，必须与 selector 匹配
+            labels:
+                app: webook-redis
+        spec:
+            containers:
+                -   # 容器名称
+                    name: webook-redis
+                    # Docker 镜像：Redis 最新版本
+                    image: redis:latest
+                    # 镜像拉取策略：本地存在则不拉取
+                    imagePullPolicy: IfNotPresent
+                    # 容器端口：Redis 默认端口
+                    ports:
+                        -   # Redis 监听端口
+                            containerPort: 6379
+                            # 网络协议：TCP
+                            protocol: TCP
+            # 容器重启策略：始终重启
+            restartPolicy: Always

@@ -1,12 +1,26 @@
+# =============================================
+# webook 应用 Service
+# 用途：为 webook REST API 提供集群内部访问入口
+# 类型：ClusterIP - 仅集群内部访问，通过 Ingress 暴露外部访问
+# 关联 Ingress：webook-ingress（k8s-ingress-nginx.yaml）
+# 关联 Deployment：webook（k8s-webook-deployment.yaml）
+# =============================================
 apiVersion: v1
 kind: Service
 metadata:
+    # Service 名称
     name: webook
 spec:
-    type: LoadBalancer
+    # Service 类型：ClusterIP（集群内部访问，外部访问由 Ingress 负责）
+    type: ClusterIP
+    # Pod 选择器：匹配带有 app: webook 标签的 Pod
     selector:
         app: webook
+    # 服务端口配置
     ports:
-        -   protocol: TCP
+        -   # 网络协议
+            protocol: TCP
+            # Service 暴露的端口（外部访问端口）
             port: 80
+            # 转发到的目标容器端口
             targetPort: 8080

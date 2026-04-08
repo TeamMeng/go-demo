@@ -1,0 +1,25 @@
+# =============================================
+# Redis Service
+# 用途：为 webook 应用提供 Redis 访问入口
+# 类型：ClusterIP - 仅在集群内部访问，不对外暴露
+# 关联 Deployment：webook-redis（k8s-redis-deployment.yaml）
+# =============================================
+apiVersion: v1
+kind: Service
+metadata:
+    # Service 名称
+    name: webook-redis
+spec:
+    # Service 类型：ClusterIP（集群内部访问）
+    type: ClusterIP
+    # Pod 选择器：匹配带有 app: webook-redis 标签的 Pod
+    selector:
+        app: webook-redis
+    # 服务端口配置
+    ports:
+        -   # 网络协议
+            protocol: TCP
+            # Service 暴露的端口（集群内部访问端口）
+            port: 6379
+            # 转发到的目标容器端口
+            targetPort: 6379

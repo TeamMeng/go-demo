@@ -14,13 +14,16 @@ package main
 import (
 	"log"
 	"net/http"
+	"time"
 	"todo_api/internal/config"
 	"todo_api/internal/database"
 	"todo_api/internal/handlers"
 	"todo_api/internal/middleware"
+	"todo_api/internal/middleware/ratelimit"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 )
 
 // main 是应用的入口函数。
@@ -46,9 +49,9 @@ func main() {
 		log.Fatal("Failed to load configuration:", err)
 	}
 
-	// redisClient := redis.NewClient(&redis.Options{
-	// 	Addr: "localhost:6379",
-	// })
+	redisClient := redis.NewClient(&redis.Options{
+		Addr: cfg.RedisURL,
+	})
 
 	// 建立数据库连接池，若失败则直接退出
 	var pool *pgxpool.Pool
@@ -76,8 +79,7 @@ func main() {
 
 	// 公开路由：用户注册与登录，无需认证
 	router.POST("/auth/register", handlers.CreateUserHandler(pool))
-	//router.POST("/auth/login", ratelimit.NewBuilder(ratelimit.NewRedisSlidingWindowLimiter(redisClient, time.Minute, 5)).Build(), handlers.LoginHandler(pool, cfg))
-	router.POST("/auth/login", handlers.LoginHandler(pool, cfg))
+	router.POST("/auth/login", ratelimit.NewBuilder(ratelimit.NewRedisSlidingWindowLimiter(redisClient, time.Minute, 5)).Build(), handlers.LoginHandler(pool, cfg))
 
 	// 受保护路由：所有 /todos 下的接口都需要有效的 JWT Token
 	protected := router.Group("/todos")
@@ -92,10 +94,6 @@ func main() {
 
 	// 测试用受保护路由，仅用于验证 JWT 中间件是否正常工作
 	router.GET("/protected-test", middleware.AuthMiddleware(cfg))
-
-	if cfg.Port == "" {
-		cfg.Port = "8080"
-	}
 
 	// 启动 HTTP 服务器，监听 cfg.Port 指定的端口
 	router.Run(":" + cfg.Port)

@@ -1,13 +1,25 @@
+# =============================================
+# PostgreSQL 数据库 Service
+# 用途：为 PostgreSQL 数据库提供集群内部 DNS 访问
+# 类型：ClusterIP - 仅在集群内部可访问
+# 关联 Deployment：webook-postgresql（k8s-postgres-deployment.yaml）
+# =============================================
 apiVersion: v1
 kind: Service
 metadata:
+    # Service 名称，用于 DNS 解析
     name: webook-postgresql
 spec:
+    # Pod 选择器：匹配带有 app: webook-postgresql 标签的 Pod
     selector:
         app: webook-postgresql
+    # 服务端口配置
     ports:
-        -   protocol: TCP
-            # 我访问的端口
+        -   # 网络协议
+            protocol: TCP
+            # Service 暴露的端口（集群内部访问端口）
             port: 5432
+            # 转发到的目标容器端口
             targetPort: 5432
+    # Service 类型：ClusterIP（仅集群内部访问，外部无法访问）
     type: ClusterIP

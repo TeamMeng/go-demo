@@ -60,6 +60,38 @@ todos-rest-api-with-auth/
 └── README.md
 ```
 
+## Kubernetes 部署架构
+
+```mermaid
+graph TB
+    subgraph 存储层
+        PV["PersistentVolume<br/>my-local-pv"]
+        PVC["PersistentVolumeClaim<br/>postgres-claim"]
+        PV --> PVC
+    end
+
+    subgraph 数据库层
+        PG_DEP["Deployment<br/>webook-postgresql<br/>(postgres:16)"]
+        PG_SVC["Service<br/>webook-postgresql:5432<br/>(ClusterIP)"]
+        PVC --> PG_DEP
+        PG_DEP --> PG_SVC
+    end
+
+    subgraph 应用层
+        WB_DEP["Deployment<br/>webook<br/>(3 replicas)<br/>teammeng/webook:v0.0.2"]
+        WB_SVC["Service<br/>webook:80<br/>(LoadBalancer)"]
+        PG_SVC -->|DATABASE_URL| WB_DEP
+        WB_DEP --> WB_SVC
+    end
+
+    外部用户 -->|port:80| WB_SVC
+```
+
+**图例说明：**
+- `PersistentVolume` → `PersistentVolumeClaim` → `Deployment`（存储绑定链）
+- `webook` 通过 `DATABASE_URL` 环境变量连接 `webook-postgresql`
+- `webook-service` 以 `LoadBalancer` 类型对外暴露端口 80
+
 ## 环境要求
 
 - Go 1.25+

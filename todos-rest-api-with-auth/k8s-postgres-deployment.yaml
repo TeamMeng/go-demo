@@ -1,32 +1,71 @@
+# =============================================
+# PostgreSQL 数据库 Deployment
+# 用途：管理 PostgreSQL 数据库容器的生命周期
+# 关联 PVC：postgres-claim（k8s-postgres-pvc.yaml）
+# 关联 PV：my-local-pv（k8s-postgres-pv.yaml）
+# 关联 Service：webook-postgresql（k8s-postgres-service.yaml）
+# =============================================
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+    # Deployment 资源名称，用于唯一标识此资源
     name: webook-postgresql
+    # 标签，用于组织和选择资源
     labels:
         app: webook-postgresql
 spec:
+    # 副本数量：始终保持 1 个 Pod 运行
     replicas: 1
+    # Pod 选择器：匹配带有 app: webook-postgresql 标签的 Pod
     selector:
         matchLabels:
             app: webook-postgresql
+    # Pod 模板定义
     template:
         metadata:
+            # Pod 名称
             name: webook-postgresql
+            # Pod 标签，必须与 selector 匹配
             labels:
                 app: webook-postgresql
         spec:
             containers:
-                -   name: webook-postgresql
+                -   # 容器名称
+                    name: webook-postgresql
+                    # Docker 镜像：PostgreSQL 16 版本
                     image: postgres:16
+                    # 镜像拉取策略：本地存在则不拉取
                     imagePullPolicy: IfNotPresent
+                    # 存储卷挂载：将持久化存储挂载到容器内目录
+                    volumeMounts:
+                        -   # 容器内的挂载路径
+                            mountPath: /var/lib/postgresql/data
+                            # 引用的 volumes 名称
+                            name: postgres-storage
+                    # 环境变量：配置 PostgreSQL 连接参数
                     env:
+                      # 数据库用户名
                       - name: POSTGRES_USER
                         value: postgres
+                      # 数据库密码
                       - name: POSTGRES_PASSWORD
                         value: postgres
+                      # 数据库名称
                       - name: POSTGRES_DB
                         value: todo_db
+                    # 容器端口：PostgreSQL 默认端口
                     ports:
-                        -   containerPort: 5432
+                        -   # 容器内部监听端口
+                            containerPort: 5432
+                            # 传输层协议
                             protocol: TCP
+            # Pod 重启策略：容器退出后始终重启
             restartPolicy: Always
+            # 存储卷定义
+            volumes:
+                -   # 存储卷名称
+                    name: postgres-storage
+                    # 使用 PersistentVolumeClaim 声明存储
+                    persistentVolumeClaim:
+                        # 关联的 PVC 名称
+                        claimName: postgres-claim

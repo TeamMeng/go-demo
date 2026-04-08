@@ -1,0 +1,25 @@
+# =============================================
+# PostgreSQL 持久化存储声明 (PVC)
+# 用途：为 PostgreSQL 数据库申请持久化存储空间
+# 关联 PV：my-local-pv（k8s-postgres-pv.yaml）
+# 关联 Deployment：webook-postgresql（k8s-postgres-deployment.yaml）
+# =============================================
+# PVC => PersistentVolumeClaim
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+    # PVC 名称，在 Deployment 中通过 claimName 引用
+    name: postgres-claim
+spec:
+    # 存储类名称：必须与 PV 的 storageClassName 一致
+    # manual 表示手动管理绑定
+    storageClassName: manual
+    # 访问模式
+    accessModes:
+        # ReadWriteOnce：被单个节点挂载为读写模式
+        -   ReadWriteOnce
+    # 资源请求
+    resources:
+        requests:
+            # 请求的存储容量：1 GiB
+            storage: 1Gi

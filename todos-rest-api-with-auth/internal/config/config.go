@@ -26,6 +26,8 @@ type Config struct {
 	// JWTSecret 是用于签发和校验 JWT Token 的对称密钥。
 	// 在生产环境中应使用足够长且随机的字符串，并妥善保管。
 	JWTSecret string
+
+	RedisURL string
 }
 
 // Load 从 .env 文件（如果存在）及环境变量中读取配置并返回 Config 实例。
@@ -47,6 +49,7 @@ func Load() (*Config, error) {
 		DatabaseURL: os.Getenv("DATABASE_URL"),
 		Port:        os.Getenv("PORT"),
 		JWTSecret:   os.Getenv("JWT_SECRET"),
+		RedisURL:    os.Getenv("REDIS_URL"),
 	}
 
 	return config, nil

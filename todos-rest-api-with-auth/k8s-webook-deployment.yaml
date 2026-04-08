@@ -1,24 +1,44 @@
+# =============================================
+# webook 应用 Deployment
+# 用途：管理 webook REST API 服务的多副本 Pod
+# =============================================
   apiVersion: apps/v1
   kind: Deployment
   metadata:
+    # Deployment 名称
     name: webook
   spec:
+    # 副本数量：运行 3 个 Pod 实现高可用
     replicas: 3
+    # Pod 选择器：匹配带有 app: webook 标签的 Pod
     selector:
       matchLabels:
         app: webook
+    # Pod 模板定义
     template:
       metadata:
+        # Pod 标签，必须与 selector 匹配
         labels:
           app: webook
       spec:
         containers:
-          - name: webook
-            image: teammeng/webook:v0.0.2
-            env:
-              - name: PORT
-                value: "8080"
-              - name: DATABASE_URL
-                value: postgres://postgres:postgres@webook-postgresql:5432/todo_db?sslmode=disable
-            ports:
-              - containerPort: 8080
+          -   # 容器名称
+              name: webook
+              # Docker 镜像：team meng/webook v0.0.4
+              image: teammeng/webook:v0.0.4
+              # 环境变量：应用配置
+              env:
+                # 应用监听端口（必须是字符串）
+                - name: PORT
+                  value: "8080"
+                # 数据库连接字符串
+                # 格式：postgres://用户名:密码@服务名:端口/数据库名?sslmode=禁用
+                - name: DATABASE_URL
+                  value: postgres://postgres:postgres@webook-postgresql:5432/todo_db?sslmode=disable
+                # Redis 连接字符串（host:port 格式）
+                - name: REDIS_URL
+                  value: webook-redis:6379
+              # 容器端口：应用监听端口
+              ports:
+                -   # 容器内部监听端口
+                    containerPort: 8080

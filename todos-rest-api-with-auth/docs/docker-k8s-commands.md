@@ -75,11 +75,30 @@ kubectl rollout status deployment/webook-postgresql
 ## 查看资源
 
 ```bash
+# 基础资源
 kubectl get deployments
 kubectl get pods
 kubectl get svc
 kubectl get endpoints webook
 kubectl get endpoints webook-postgresql
+
+# PVC 和 PV（持久卷绑定）
+kubectl get pvc                    # 查看 PVC 状态和绑定信息
+kubectl get pv                     # 查看 PV 状态
+kubectl describe pvc <pvc-name>    # 查看 PVC 详细信息（包括绑定到的 PV）
+kubectl describe pv <pv-name>      # 查看 PV 详细信息
+
+# 示例：查看 PostgreSQL PVC 绑定状态
+kubectl get pvc -l app=webook-postgresql
+kubectl describe pvc webook-postgresql
+
+# 查看 Secret 和 ConfigMap
+kubectl get secret
+kubectl get configmap
+
+# 查看资源详细事件（排查绑定/创建失败时很有用）
+kubectl describe pod <pod-name>
+kubectl describe deployment webook-postgresql
 ```
 
 ## 删除应用
@@ -277,7 +296,7 @@ kubectl get pods -w
 
 这通常表示：
 
-- 请求已经成功到达应用
+- 请求已经成功到达应****用
 - 登录逻辑已经执行
 - 只是用户名或密码不正确
 

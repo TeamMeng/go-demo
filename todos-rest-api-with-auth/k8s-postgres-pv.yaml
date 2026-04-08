@@ -1,0 +1,20 @@
+# =============================================
+# PostgreSQL 本地持久化卷 (PV)
+# 用途：使用本地节点存储为 PostgreSQL 提供持久化存储
+# 注意：此 PV 需要与 PVC 的 storageClassName: manual 匹配
+# 关联 PVC：postgres-claim（k8s-postgres-pvc.yaml）
+# =============================================
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+    # PV 名称
+    name: my-local-pv
+    # 标签：用于 PVC 绑定时的选择
+spec:
+    storageClassName: manual
+    capacity:
+        storage: 1Gi
+    accessModes:
+        -   ReadWriteOnce
+    hostPath:
+        path: /mnt/live
