@@ -1,2 +1,5 @@
 [default]
 extend-ignore-re = []
+
+[default.extend-words]
+wrk = "wrk"

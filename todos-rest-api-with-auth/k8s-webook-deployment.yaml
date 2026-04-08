@@ -25,7 +25,7 @@
           -   # 容器名称
               name: webook
               # Docker 镜像：team meng/webook v0.0.4
-              image: teammeng/webook:v0.0.4
+              image: teammeng/webook:v0.0.5
               # 环境变量：应用配置
               env:
                 # 应用监听端口（必须是字符串）

@@ -182,7 +182,7 @@ func TestProtectHandler() gin.HandlerFunc {
 		}
 
 		ctx.JSON(http.StatusOK, gin.H{
-			"message": "Protected route accessed suucessfully",
+			"message": "Protected route accessed successfully",
 			"user_id": userID,
 		})
 	}
