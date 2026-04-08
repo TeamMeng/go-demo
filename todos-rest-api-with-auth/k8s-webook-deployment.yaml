@@ -38,6 +38,9 @@
                 # Redis 连接字符串（host:port 格式）
                 - name: REDIS_URL
                   value: webook-redis:6379
+                # Jwt
+                - name: JWT_SECRET
+                  value: my-jwt-password-string-security
               # 容器端口：应用监听端口
               ports:
                 -   # 容器内部监听端口
