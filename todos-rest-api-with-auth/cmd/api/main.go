@@ -21,6 +21,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 )
 
 // main 是应用的入口函数。
@@ -46,9 +47,9 @@ func main() {
 		log.Fatal("Failed to load configuration:", err)
 	}
 
-	//redisClient := redis.NewClient(&redis.Options{
-	//	Addr: cfg.RedisURL,
-	//})
+	redisClient := redis.NewClient(&redis.Options{
+		Addr: cfg.RedisURL,
+	})
 
 	// 建立数据库连接池，若失败则直接退出
 	var pool *pgxpool.Pool
@@ -85,7 +86,7 @@ func main() {
 	{
 		protected.POST("", handlers.CreateTodoHandler(pool))
 		protected.GET("", handlers.GetAllTodosHandler(pool))
-		protected.GET("/:id", handlers.GetToDoByIDHandler(pool))
+		protected.GET("/:id", handlers.GetToDoByIDHandler(pool, redisClient))
 		protected.PUT("/:id", handlers.UpdateTodoHandler(pool))
 		protected.DELETE("/:id", handlers.DeleteTodoHandler(pool))
 	}

@@ -9,13 +9,20 @@
 package handlers
 
 import (
+	"context"
+	"encoding/json"
+	"errors"
+	"log"
 	"net/http"
 	"strconv"
+	"time"
+	"todo_api/internal/models"
 	"todo_api/internal/repository"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 )
 
 // CreateTodoInput 是创建待办事项时的请求体结构。
@@ -115,7 +122,7 @@ func GetAllTodosHandler(pool *pgxpool.Pool) gin.HandlerFunc {
 //  2. 将 id 从字符串转换为整数，若转换失败返回 400。
 //  3. 调用 repository.GetToDoByID 查询记录。
 //  4. 若记录不存在（pgx.ErrNoRows），返回 404；其他错误返回 500。
-func GetToDoByIDHandler(pool *pgxpool.Pool) gin.HandlerFunc {
+func GetToDoByIDHandler(pool *pgxpool.Pool, redisClient *redis.Client) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userIDInterface, exists := c.Get("user_id")
 		if !exists {
@@ -133,6 +140,21 @@ func GetToDoByIDHandler(pool *pgxpool.Pool) gin.HandlerFunc {
 			return
 		}
 
+		cacheKey := "todo:item:" + userID + ":" + idStr
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+
+		cached, err := redisClient.Get(ctx, cacheKey).Result()
+		if err == nil {
+			var todo models.Todo
+			if json.Unmarshal([]byte(cached), &todo) == nil {
+				c.JSON(http.StatusOK, todo)
+				return
+			}
+		} else if !errors.Is(err, redis.Nil) {
+			log.Printf("redis get failed, key=%s err=%v", cacheKey, err)
+		}
+
 		todo, err := repository.GetToDoByID(pool, id, userID)
 		if err != nil {
 			if err == pgx.ErrNoRows {
@@ -141,6 +163,10 @@ func GetToDoByIDHandler(pool *pgxpool.Pool) gin.HandlerFunc {
 			}
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
+		}
+		payload, err := json.Marshal(todo)
+		if err == nil {
+			redisClient.Set(ctx, cacheKey, payload, time.Minute)
 		}
 
 		c.JSON(http.StatusOK, todo)

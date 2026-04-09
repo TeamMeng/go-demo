@@ -123,7 +123,7 @@ Content-Type: application/json
 }
 
 ### get todo by id, valid id
-GET http://live.webook.com/todos/1
+GET http://live.webook.com/todos/2
 Authorization: Bearer {{webook_token}}
 
 ### update todo

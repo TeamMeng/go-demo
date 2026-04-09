@@ -1,4 +1,4 @@
-********# Todo REST API 架构文档
+# Todo REST API 架构文档
 
 ## 1. 概述
 
