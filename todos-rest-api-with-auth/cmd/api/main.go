@@ -14,11 +14,18 @@ package main
 import (
 	"log"
 	"net/http"
+	"time"
 	"todo_api/internal/config"
 	"todo_api/internal/database"
 	"todo_api/internal/handlers"
 	"todo_api/internal/middleware"
+	"todo_api/internal/middleware/ratelimit"
+	"todo_api/internal/repository"
+	"todo_api/internal/repository/cache"
+	"todo_api/internal/service"
+	"todo_api/internal/service/sms/aliyun"
 
+	"github.com/alibabacloud-go/tea/tea"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
@@ -51,6 +58,18 @@ func main() {
 		Addr: cfg.RedisURL,
 	})
 
+	codeCache := cache.NewCodeCache(redisClient)
+	codeRepo := repository.NewCodeRepository(codeCache)
+
+	aliyunClient, err := aliyun.CreateClient()
+
+	if err != nil {
+		log.Fatal("Failed to create aliyun sms client:", err)
+	}
+
+	smsSvc := aliyun.NewService(tea.String("云渚科技验证平台"), aliyunClient)
+	codeSvc := service.NewCodeService(codeRepo, smsSvc)
+
 	// 建立数据库连接池，若失败则直接退出
 	var pool *pgxpool.Pool
 	pool, err = database.Connect(cfg.DatabaseURL)
@@ -64,7 +83,9 @@ func main() {
 	var router *gin.Engine = gin.Default()
 
 	// 禁用代理信任，避免 X-Forwarded-For 等头被恶意利用
-	router.SetTrustedProxies(nil)
+	if err := router.SetTrustedProxies(nil); err != nil {
+		log.Fatal("Failed to set trusted proxies:", err)
+	}
 
 	// 健康检查端点：返回服务运行状态及数据库连接状态
 	router.GET("/", func(ctx *gin.Context) {
@@ -77,8 +98,8 @@ func main() {
 
 	// 公开路由：用户注册与登录，无需认证
 	router.POST("/auth/register", handlers.CreateUserHandler(pool))
-	//router.POST("/auth/login", ratelimit.NewBuilder(ratelimit.NewRedisSlidingWindowLimiter(redisClient, time.Minute, 5)).Build(), handlers.LoginHandler(pool, cfg))
-	router.POST("/auth/login", handlers.LoginHandler(pool, cfg))
+	router.POST("/auth/login", ratelimit.NewBuilder(ratelimit.NewRedisSlidingWindowLimiter(redisClient, time.Minute, 5)).Build(), handlers.LoginHandler(pool, cfg))
+	router.POST("/sms/login/code", handlers.SendLoginSMSCodeHandler(codeSvc))
 
 	// 受保护路由：所有 /todos 下的接口都需要有效的 JWT Token
 	protected := router.Group("/todos")
@@ -95,5 +116,7 @@ func main() {
 	router.GET("/protected-test", middleware.AuthMiddleware(cfg))
 
 	// 启动 HTTP 服务器，监听 cfg.Port 指定的端口
-	router.Run(":" + cfg.Port)
+	if err := router.Run(":" + cfg.Port); err != nil {
+		log.Fatal("Failed to start server:", err)
+	}
 }

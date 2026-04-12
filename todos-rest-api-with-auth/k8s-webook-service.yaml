@@ -18,9 +18,9 @@ spec:
         app: webook
     # 服务端口配置
     ports:
-        -   # 网络协议
-            protocol: TCP
-            # Service 暴露的端口（外部访问端口）
-            port: 80
-            # 转发到的目标容器端口
-            targetPort: 8080
+        - # 网络协议
+          protocol: TCP
+          # Service 暴露的端口（外部访问端口）
+          port: 80
+          # 转发到的目标容器端口
+          targetPort: 8080

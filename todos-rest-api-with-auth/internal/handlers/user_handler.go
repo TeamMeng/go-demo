@@ -1,4 +1,4 @@
-// package handlers 包含所有 HTTP 请求处理器（Handler），负责解析请求、调用仓库层并返回响应。
+// Package handlers 包含所有 HTTP 请求处理器（Handler），负责解析请求、调用仓库层并返回响应。
 //
 // 该层是应用的接入层（Transport Layer），主要职责包括：
 //  1. 解析并校验请求参数（JSON 请求体）。
@@ -15,6 +15,7 @@ import (
 	"todo_api/internal/config"
 	"todo_api/internal/models"
 	"todo_api/internal/repository"
+	"todo_api/internal/service"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -40,6 +41,10 @@ type RegisterRequest struct {
 type LoginRequest struct {
 	Email    string `json:"email" binding:"required"`
 	Password string `json:"password" binding:"required"`
+}
+
+type SmsLoginRequest struct {
+	Phone string `json:"phone" binding:"required"`
 }
 
 // LoginResponse 是用户登录成功后的响应体结构。
@@ -184,6 +189,25 @@ func TestProtectHandler() gin.HandlerFunc {
 		ctx.JSON(http.StatusOK, gin.H{
 			"message": "Protected route accessed successfully",
 			"user_id": userID,
+		})
+	}
+}
+
+func SendLoginSMSCodeHandler(codeSvc *service.CodeService) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		const biz = "login"
+		var req SmsLoginRequest
+		if err := ctx.BindJSON(&req); err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "jsonReq" + err.Error()})
+			return
+		}
+		if err := codeSvc.Send(ctx, biz, req.Phone); err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		ctx.JSON(http.StatusOK, gin.H{
+			"message": "Send successfully",
 		})
 	}
 }

@@ -17,7 +17,7 @@ spec:
     # 访问模式
     accessModes:
         # ReadWriteOnce：被单个节点挂载为读写模式
-        -   ReadWriteOnce
+        - ReadWriteOnce
     # 资源请求
     resources:
         requests:

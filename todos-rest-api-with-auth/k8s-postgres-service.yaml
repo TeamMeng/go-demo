@@ -15,11 +15,11 @@ spec:
         app: webook-postgresql
     # 服务端口配置
     ports:
-        -   # 网络协议
-            protocol: TCP
-            # Service 暴露的端口（集群内部访问端口）
-            port: 5432
-            # 转发到的目标容器端口
-            targetPort: 5432
+        - # 网络协议
+          protocol: TCP
+          # Service 暴露的端口（集群内部访问端口）
+          port: 5432
+          # 转发到的目标容器端口
+          targetPort: 5432
     # Service 类型：ClusterIP（仅集群内部访问，外部无法访问）
     type: ClusterIP

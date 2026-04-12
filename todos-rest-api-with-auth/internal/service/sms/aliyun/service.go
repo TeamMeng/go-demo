@@ -5,8 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 
-	openapi "github.com/alibabacloud-go/darabonba-openapi/v2/client"
-	dysmsapi "github.com/alibabacloud-go/dysmsapi-20170525/v4/client"
+	openapi "github.com/alibabacloud-go/darabonba-openapi/v2/utils"
+	dypnsapi "github.com/alibabacloud-go/dypnsapi-20170525/v3/client"
+	"github.com/alibabacloud-go/tea/dara"
 	"github.com/alibabacloud-go/tea/tea"
 	credential "github.com/aliyun/credentials-go/credentials"
 )
@@ -14,18 +15,18 @@ import (
 // Service 是阿里云短信服务实现。
 //
 // 它实现了 internal/service/sms.Service 接口，业务层只依赖接口，不需要知道底层使用的是
-// 阿里云 dysmsapi SDK。
+// 阿里云号码认证服务 dypnsapi SDK。
 type Service struct {
 	// signName 是阿里云短信签名名称，必须是阿里云控制台审核通过的签名。
 	signName *string
 	// client 是阿里云短信 SDK 客户端，负责发起 SendSms 请求。
-	client *dysmsapi.Client
+	client *dypnsapi.Client
 }
 
 // NewService 创建阿里云短信服务。
 //
 // signName 和 client 由外部传入，便于在启动阶段统一初始化 SDK 客户端，也便于测试时替换。
-func NewService(signName *string, client *dysmsapi.Client) *Service {
+func NewService(signName *string, client *dypnsapi.Client) *Service {
 	return &Service{
 		client:   client,
 		signName: signName,
@@ -35,8 +36,8 @@ func NewService(signName *string, client *dysmsapi.Client) *Service {
 // CreateClient 基于阿里云默认凭证链创建短信客户端。
 //
 // credential.NewCredential(nil) 会按阿里云 SDK 的默认规则查找凭证，例如环境变量、
-// 配置文件、实例角色等。这里固定使用 dysmsapi.aliyuncs.com 作为短信服务 endpoint。
-func CreateClient() (*dysmsapi.Client, error) {
+// 配置文件、实例角色等。这里固定使用 dypnsapi.aliyuncs.com 作为号码认证服务 endpoint。
+func CreateClient() (*dypnsapi.Client, error) {
 	cred, err := credential.NewCredential(nil)
 	if err != nil {
 		return nil, err
@@ -45,9 +46,9 @@ func CreateClient() (*dysmsapi.Client, error) {
 	config := &openapi.Config{
 		Credential: cred,
 	}
-	config.Endpoint = tea.String("dysmsapi.aliyuncs.com")
+	config.Endpoint = tea.String("dypnsapi.aliyuncs.com")
 
-	client, err := dysmsapi.NewClient(config)
+	client, err := dypnsapi.NewClient(config)
 	if err != nil {
 		return nil, err
 	}
@@ -85,18 +86,32 @@ func (s *Service) Send(ctx context.Context, tpl string, args []string, numbers .
 
 	// 遍历每个号码发送
 	for _, number := range numbers {
-		// SendSmsRequest 中的 TemplateParam 必须是 JSON 字符串，SignName 和 TemplateCode
-		// 必须和阿里云控制台审核通过的短信签名、模板保持一致。
-		req := &dysmsapi.SendSmsRequest{
-			PhoneNumbers:  tea.String(number),
+		// SendSmsVerifyCodeRequest 中的 TemplateParam 必须是 JSON 字符串，SignName 和
+		// TemplateCode 必须和号码认证服务控制台里的签名、模板保持一致。
+		req := &dypnsapi.SendSmsVerifyCodeRequest{
+			PhoneNumber:   tea.String(number),
 			SignName:      s.signName,
 			TemplateCode:  tea.String(tpl),
 			TemplateParam: tea.String(string(paramJSON)),
 		}
 
-		_, err := s.client.SendSmsWithOptions(req, nil)
+		resp, err := s.client.SendSmsVerifyCodeWithOptions(req, &dara.RuntimeOptions{})
 		if err != nil {
 			return fmt.Errorf("failed to send SMS to %s: %w", number, err)
+		}
+		var code, message, requestID string
+		if resp != nil && resp.Body != nil {
+			code = tea.StringValue(resp.Body.Code)
+			message = tea.StringValue(resp.Body.Message)
+			requestID = tea.StringValue(resp.Body.RequestId)
+		}
+		if code != "OK" {
+			return fmt.Errorf("failed to send SMS to %s: aliyun code=%s message=%s requestId=%s",
+				number,
+				code,
+				message,
+				requestID,
+			)
 		}
 	}
 	return nil

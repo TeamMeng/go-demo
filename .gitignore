@@ -3,3 +3,4 @@
 go-github-actions-demo
 .cache/
 .idea/
+todos-rest-api-with-auth/.env

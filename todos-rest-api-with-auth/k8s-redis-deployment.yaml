@@ -29,17 +29,17 @@ spec:
                 app: webook-redis
         spec:
             containers:
-                -   # 容器名称
-                    name: webook-redis
-                    # Docker 镜像：Redis 最新版本
-                    image: redis:latest
-                    # 镜像拉取策略：本地存在则不拉取
-                    imagePullPolicy: IfNotPresent
-                    # 容器端口：Redis 默认端口
-                    ports:
-                        -   # Redis 监听端口
-                            containerPort: 6379
-                            # 网络协议：TCP
-                            protocol: TCP
+                - # 容器名称
+                  name: webook-redis
+                  # Docker 镜像：Redis 最新版本
+                  image: redis:latest
+                  # 镜像拉取策略：本地存在则不拉取
+                  imagePullPolicy: IfNotPresent
+                  # 容器端口：Redis 默认端口
+                  ports:
+                      - # Redis 监听端口
+                        containerPort: 6379
+                        # 网络协议：TCP
+                        protocol: TCP
             # 容器重启策略：始终重启
             restartPolicy: Always

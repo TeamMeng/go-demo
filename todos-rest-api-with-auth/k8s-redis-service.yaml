@@ -17,9 +17,9 @@ spec:
         app: webook-redis
     # 服务端口配置
     ports:
-        -   # 网络协议
-            protocol: TCP
-            # Service 暴露的端口（集群内部访问端口）
-            port: 6379
-            # 转发到的目标容器端口
-            targetPort: 6379
+        - # 网络协议
+          protocol: TCP
+          # Service 暴露的端口（集群内部访问端口）
+          port: 6379
+          # 转发到的目标容器端口
+          targetPort: 6379

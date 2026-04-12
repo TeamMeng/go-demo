@@ -13,7 +13,7 @@ import (
 //
 // 当前值为空，表示还没有绑定真实模板；接入真实短信通道时需要替换成
 // 阿里云、腾讯云等短信平台审核通过的模板编号。
-const codeTplId = ""
+const codeTplId = "100001"
 
 // CodeService 负责验证码业务流程编排。
 //
@@ -27,6 +27,13 @@ type CodeService struct {
 	repo *repository.CodeRepository
 	// smsSvc 是短信服务抽象，可以替换成腾讯云、阿里云或测试用 mock 实现。
 	smsSvc sms.Service
+}
+
+func NewCodeService(repo *repository.CodeRepository, smsSvc sms.Service) *CodeService {
+	return &CodeService{
+		repo:   repo,
+		smsSvc: smsSvc,
+	}
 }
 
 // Send 生成验证码、写入缓存并发送短信。
@@ -50,7 +57,7 @@ func (svc *CodeService) Send(ctx context.Context, biz string, phone string) erro
 		return err
 	}
 	// 发送出去
-	if err := svc.smsSvc.Send(ctx, codeTplId, []string{code}, phone); err != nil {
+	if err := svc.smsSvc.Send(ctx, codeTplId, []string{code, "5"}, phone); err != nil {
 		return err
 	}
 
@@ -79,5 +86,5 @@ func (svc *CodeService) Verify(ctx context.Context, biz string, phone string, in
 // 可以考虑切换为 crypto/rand。
 func (svc *CodeService) generateCode() string {
 	num := rand.Intn(1000000)
-	return fmt.Sprintf("%6d", num)
+	return fmt.Sprintf("%06d", num)
 }

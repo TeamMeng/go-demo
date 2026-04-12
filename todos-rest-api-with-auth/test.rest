@@ -139,3 +139,12 @@ Content-Type: application/json
 ### delete todo by id, valid id
 DELETE http://live.webook.com/todos/1
 Authorization: Bearer {{webook_token}}
+
+
+### sms
+POST http://localhost:8080/sms/login/code
+Content-Type: application/json
+
+{
+	"phone": ""
+}

@@ -38,8 +38,7 @@ elseif ttl == -2 or ttl < 540 then
 	-- 每个验证码最多允许验证 3 次，成功验证后 verify_code.lua 会把该值置为 -1。
 	redis.call("set", cntKey, 3)
 	-- 业务意图：验证次数 key 和验证码 key 使用相同有效期，避免验证码过期后次数 key 残留。
-	-- 注意：这里当前调用的是 exire；如果运行时报 Redis unknown command，需要检查是否应为 expire。
-	redis.call("exire", cntKey, 600)
+	redis.call("expire", cntKey, 600)
 	return 0
 else
 	-- 旧验证码剩余有效期仍然大于等于 9 分钟，说明用户在短时间内重复获取验证码。
