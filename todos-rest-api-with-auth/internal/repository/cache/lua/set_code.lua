@@ -30,17 +30,23 @@ local ttl = tonumber(redis.call("ttl", key))
 if ttl == -1 then
 	-- key 存在但没有过期时间。验证码必须有有效期，因此这里作为异常状态返回。
 	return -2
-elseif ttl == -2 or ttl < 540 then
-	-- 旧验证码不存在，或者旧验证码距离过期不足 9 分钟，允许生成新验证码。
+elseif ttl == -2 then
+	-- 旧验证码不存在，允许生成新验证码。
 	redis.call("set", key, val)
 	-- 验证码有效期 10 分钟。
 	redis.call("expire", key, 600)
-	-- 每个验证码最多允许验证 3 次，成功验证后 verify_code.lua 会把该值置为 -1。
-	redis.call("set", cntKey, 3)
+	-- 每个验证码最多允许验证 5 次，成功验证后 verify_code.lua 会把该值置为 -1。
+	redis.call("set", cntKey, 5)
 	-- 业务意图：验证次数 key 和验证码 key 使用相同有效期，避免验证码过期后次数 key 残留。
 	redis.call("expire", cntKey, 600)
 	return 0
 else
-	-- 旧验证码剩余有效期仍然大于等于 9 分钟，说明用户在短时间内重复获取验证码。
-	return -1
+	-- 旧验证码存在（ttl >= 0），无论剩余多少时间，都重置验证码和次数。
+	-- 这样用户输错后可以立即请求新验证码重试。
+	redis.call("set", key, val)
+	redis.call("expire", key, 600)
+	-- 重置验证次数为 5 次。
+	redis.call("set", cntKey, 5)
+	redis.call("expire", cntKey, 600)
+	return 0
 end

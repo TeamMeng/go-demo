@@ -100,6 +100,7 @@ func main() {
 	router.POST("/auth/register", handlers.CreateUserHandler(pool))
 	router.POST("/auth/login", ratelimit.NewBuilder(ratelimit.NewRedisSlidingWindowLimiter(redisClient, time.Minute, 5)).Build(), handlers.LoginHandler(pool, cfg))
 	router.POST("/sms/login/code", handlers.SendLoginSMSCodeHandler(codeSvc))
+	router.POST("/sms/login/verify", handlers.VerifyLoginSMSCodeHandler(pool, cfg, codeSvc))
 
 	// 受保护路由：所有 /todos 下的接口都需要有效的 JWT Token
 	protected := router.Group("/todos")

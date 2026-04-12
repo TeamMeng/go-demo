@@ -148,3 +148,12 @@ Content-Type: application/json
 {
 	"phone": ""
 }
+
+### verify code and login
+POST http://localhost:8080/sms/login/verify
+Content-Type: application/json
+
+{
+	"phone": "",
+	"code": ""
+}

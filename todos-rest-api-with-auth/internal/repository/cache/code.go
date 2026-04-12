@@ -58,7 +58,7 @@ func NewCodeCache(client redis.Cmdable) *CodeCache {
 // 这里不直接调用 SET/EXPIRE，而是执行 luaSetCode：
 //   - 如果验证码不存在，或剩余有效期小于 9 分钟，则允许重新发送并重置 10 分钟有效期。
 //   - 如果验证码剩余有效期仍然较长，则拒绝发送，用于限制频繁获取验证码。
-//   - 每次成功写入验证码时，会把验证次数初始化为 3 次。
+//   - 每次成功写入验证码时，会把验证次数初始化为 5 次。
 //
 // Lua 返回码约定：
 //   - 0：写入成功。
@@ -84,6 +84,7 @@ func (c *CodeCache) Set(ctx context.Context, biz, phone, code string) error {
 // luaVerifyCode 会在 Redis 内部一次性完成校验和次数更新：
 //   - 验证成功时返回 0，并把次数标记为 -1，避免验证码被重复使用。
 //   - 验证次数耗尽时返回 -1。
+//   - 验证码错误或验证码已过期时返回 -2。
 //   - 其它状态会被映射成 ErrUnknownForCode。
 //
 // 返回值中 bool 只表达“验证码是否正确”，error 用于表达限流、次数耗尽或系统异常。
@@ -97,6 +98,8 @@ func (c *CodeCache) Verify(ctx context.Context, biz, phone, code string) (bool, 
 		return true, nil
 	case -1:
 		return false, ErrCodeVerifyTooManyTimes
+	case -2:
+		return false, nil
 	default:
 		return false, ErrUnknownForCode
 	}

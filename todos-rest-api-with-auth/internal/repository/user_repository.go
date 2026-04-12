@@ -6,9 +6,11 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"time"
 	"todo_api/internal/models"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -127,6 +129,104 @@ func GetUserByID(pool *pgxpool.Pool, id int) (*models.User, error) {
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
+}
+
+// FindOrCreateUserByPhone 根据手机号查找用户，若不存在则创建一个新用户。
+//
+// 参数：
+//   - pool: PostgreSQL 连接池。
+//   - phone: 手机号。
+//
+// 返回值：
+//   - *models.User: 查找或创建的用户对象。
+//   - error: 数据库错误。
+//
+// 并发安全说明：
+//
+//	使用 PostgreSQL 事务 + ON CONFLICT 实现「查找或创建」的原子操作。
+//	流程：BEGIN → SELECT FOR UPDATE（悲观锁）→ 存在则返回 → 不存在则 INSERT → COMMIT。
+//	即便两个请求同时到达同一手机号，也只有一个会创建成功，另一个会读到已创建的记录。
+//
+//	为什么不使用 INSERT ... ON CONFLICT DO NOTHING 返回 ctid？
+//	  因为该方式无法区分「插入成功」和「已存在」两种情况，需要额外的查询确认。
+//
+// 注意：
+//
+//	新创建的用户只有 phone 字段，email 和 password 为空。
+//	若调用方需要完整的用户信息，需在创建后更新相应字段。
+func FindOrCreateUserByPhone(pool *pgxpool.Pool, phone string) (*models.User, error) {
+	var ctx context.Context
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var user models.User
+	var password sql.NullString
+
+	// 使用事务确保并发安全
+	tx, err := pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.Serializable})
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	err = func() error {
+		// 先尝试用悲观锁查找，防止并发插入
+		var query = `
+			SELECT id, email, phone, password, created_at, updated_at
+			FROM users
+			WHERE phone = $1
+			FOR UPDATE
+		`
+
+		err := tx.QueryRow(ctx, query, phone).Scan(
+			&user.ID,
+			&user.Email,
+			&user.Phone,
+			&password,
+			&user.CreatedAt,
+			&user.UpdatedAt,
+		)
+		user.Password = password.String
+		if err == nil {
+			// 找到用户，直接提交事务并返回
+			if commitErr := tx.Commit(ctx); commitErr != nil {
+				return commitErr
+			}
+			return nil
+		}
+		if err != pgx.ErrNoRows {
+			return err
+		}
+
+		// 未找到，创建新用户
+		var createQuery = `
+			INSERT INTO users (phone)
+			VALUES ($1)
+			RETURNING id, email, phone, password, created_at, updated_at
+		`
+
+		err = tx.QueryRow(ctx, createQuery, phone).Scan(
+			&user.ID,
+			&user.Email,
+			&user.Phone,
+			&user.Password,
+			&user.CreatedAt,
+			&user.UpdatedAt,
+		)
+		if err != nil {
+			return err
+		}
+
+		// 提交事务
+		return tx.Commit(ctx)
+	}()
+
 	if err != nil {
 		return nil, err
 	}

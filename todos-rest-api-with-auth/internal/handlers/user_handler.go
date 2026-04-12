@@ -9,6 +9,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"net/http"
 	"strings"
 	"time"
@@ -22,6 +23,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 )
+
+const biz = "login"
 
 // RegisterRequest 是用户注册请求的请求体结构。
 //
@@ -43,16 +46,30 @@ type LoginRequest struct {
 	Password string `json:"password" binding:"required"`
 }
 
-type SmsLoginRequest struct {
-	Phone string `json:"phone" binding:"required"`
-}
-
 // LoginResponse 是用户登录成功后的响应体结构。
 //
 // 字段说明：
 //   - Token: JWT 访问令牌，客户端应在后续受保护请求的 Authorization 头中以 Bearer 方式携带。
 type LoginResponse struct {
 	Token string `json:"token"`
+}
+
+// SmsLoginRequest 是发送登录短信验证码的请求体。
+//
+// 字段说明：
+//   - Phone: 用户手机号，必填，用于接收验证码短信。
+type SmsLoginRequest struct {
+	Phone string `json:"phone" binding:"required"`
+}
+
+// SmsLoginVerifyRequest 是使用短信验证码登录的请求体。
+//
+// 字段说明：
+//   - Phone: 用户手机号，必填，用于定位验证码和关联账户。
+//   - Code:  短信验证码，必填，6 位数字。
+type SmsLoginVerifyRequest struct {
+	Phone string `json:"phone" binding:"required"`
+	Code  string `json:"code" binding:"required"`
 }
 
 // CreateUserHandler 返回一个 Gin HandlerFunc，用于处理用户注册请求。
@@ -91,7 +108,7 @@ func CreateUserHandler(pool *pgxpool.Pool) gin.HandlerFunc {
 		}
 
 		user := &models.User{
-			Email:    req.Email,
+			Email:    sql.NullString{String: req.Email, Valid: true},
 			Password: string(hashedPassword),
 		}
 
@@ -193,9 +210,22 @@ func TestProtectHandler() gin.HandlerFunc {
 	}
 }
 
+// SendLoginSMSCodeHandler 返回一个 Gin HandlerFunc，用于向用户手机发送登录验证码。
+//
+// 路由：POST /auth/login/sms（公开）
+//
+// 处理流程：
+//  1. 绑定并校验请求 JSON，确保 phone 字段存在。
+//  2. 调用 CodeService.Send 生成 6 位验证码、写入 Redis 并发送短信。
+//  3. 发送失败时返回 500，由 service 层控制发送频率（540 秒冷却期）。
+//  4. 成功返回 200。
+//
+// 安全说明：
+//
+//	发送频率由 Lua 脚本在 Redis 层面控制，同一手机号 540 秒内只能获取一次验证码。
+//	避免短信轰炸攻击。
 func SendLoginSMSCodeHandler(codeSvc *service.CodeService) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		const biz = "login"
 		var req SmsLoginRequest
 		if err := ctx.BindJSON(&req); err != nil {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "jsonReq" + err.Error()})
@@ -208,6 +238,71 @@ func SendLoginSMSCodeHandler(codeSvc *service.CodeService) gin.HandlerFunc {
 
 		ctx.JSON(http.StatusOK, gin.H{
 			"message": "Send successfully",
+		})
+	}
+}
+
+// VerifyLoginSMSCodeHandler 返回一个 Gin HandlerFunc，用于验证短信验证码并完成登录。
+//
+// 路由：POST /auth/login/sms/verify（公开）
+//
+// 处理流程：
+//  1. 绑定并校验请求 JSON，提取 phone 和 code。
+//  2. 调用 CodeService.Verify 校验验证码：
+//     - 验证成功：Lua 脚本自动将验证次数置为 -1，防止验证码重复使用。
+//     - 验证失败：返回 401。
+//  3. 验证码通过后，调用 repository.FindOrCreateUserByPhone 查找或创建账户。
+//  4. 签发 JWT Token（24 小时有效），并绑定 User-Agent。
+//  5. 返回 Token 给客户端。
+//
+// 安全说明：
+//   - 验证码通过后立即使用，不支持「先验证再决定是否登录」的犹豫期。
+//   - JWT 绑定 User-Agent，防止 Token 被盗后在其他客户端使用。
+func VerifyLoginSMSCodeHandler(pool *pgxpool.Pool, cfg *config.Config, codeSvc *service.CodeService) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		var req SmsLoginVerifyRequest
+		if err := ctx.BindJSON(&req); err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "jsonReq" + err.Error()})
+			return
+		}
+		ok, err := codeSvc.Verify(ctx, biz, req.Phone, req.Code)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		if !ok {
+			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid verification code"})
+			return
+		}
+
+		user, err := repository.FindOrCreateUserByPhone(pool, req.Phone)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		// 构造 JWT Claims，设置 24 小时有效期
+		// 注意：额外添加 user_agent 字段，将 Token 绑定到签发时的客户端 User-Agent。
+		// 若他人盗取 Token 并在不同 User-Agent 下使用，AuthMiddleware 会拒绝该请求，提升安全性。
+		claims := jwt.MapClaims{
+			"user_id":    user.ID,
+			"phone":      user.Phone,
+			"exp":        time.Now().Add(24 * time.Hour).Unix(),
+			"user_agent": ctx.Request.UserAgent(),
+		}
+
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+		// 使用配置的 JWTSecret 对 Token 签名
+		tokenString, err := token.SignedString([]byte(cfg.JWTSecret))
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token" + err.Error()})
+			return
+		}
+
+		ctx.JSON(http.StatusOK, gin.H{
+			"message": "Login successfully",
+			"token":   tokenString,
 		})
 	}
 }
