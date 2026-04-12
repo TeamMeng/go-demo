@@ -4,7 +4,8 @@
 
 ## 功能特性
 
-- **用户认证**：基于 JWT 的认证机制，支持用户注册和登录
+- **用户认证**：基于 JWT 的认证机制，支持用户注册、账号密码登录和短信验证码登录
+- **短信验证码登录**：支持手机号 + 短信验证码登录，无需密码
 - **数据隔离**：每个用户只能访问自己的待办事项
 - **RESTful API**：标准的 REST 接口设计
 - **数据库支持**：PostgreSQL 持久化存储
@@ -50,9 +51,19 @@ todos-rest-api-with-auth/
 │   ├── models/                 # 数据模型
 │   │   ├── todo.go
 │   │   └── user.go
-│   └── repository/             # 数据访问层
-│       ├── todo_repository.go
-│       └── user_repository.go
+│   ├── repository/             # 数据访问层
+│   │   ├── todo_repository.go
+│   │   ├── user_repository.go
+│   │   └── cache/             # Redis 缓存层
+│   │       └── code.go        # 验证码存储与校验
+│   │       └── lua/           # Lua 脚本
+│   │           ├── set_code.lua     # 验证码写入脚本
+│   │           └── verify_code.lua  # 验证码校验脚本
+│   └── service/               # 业务服务层
+│       ├── code.go           # 验证码服务（编排层）
+│       └── sms/              # 短信服务抽象
+│           ├── service.go    # 短信服务接口
+│           └── aliyun/       # 阿里云短信实现
 ├── migrations/                 # 数据库迁移脚本
 │   └── 20260324131714_initial.sql
 ├── .env                        # 环境变量配置
@@ -248,6 +259,56 @@ Content-Type: application/json
 }
 ```
 
+#### 发送登录短信验证码
+
+```http
+POST /auth/login/sms
+Content-Type: application/json
+
+{
+    "phone": "13800138000"
+}
+```
+
+**响应：**
+```json
+{
+    "message": "Send successfully"
+}
+```
+
+**验证码发送频率限制：**
+- 同一手机号 540 秒（9 分钟）内只能获取一次验证码
+- 每个验证码有效期 10 分钟
+- 每个验证码最多可验证 5 次
+
+#### 验证短信验证码并登录
+
+```http
+POST /auth/login/sms/verify
+Content-Type: application/json
+
+{
+    "phone": "13800138000",
+    "code": "123456"
+}
+```
+
+**响应：**
+```json
+{
+    "message": "Login successfully",
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+**错误响应（验证码错误或过期）：**
+```json
+{
+    "error": "Invalid verification code"
+}
+```
+
 **限流响应（429 Too Many Requests）：**
 
 当请求超过限流阈值时，返回以下响应：
@@ -376,8 +437,9 @@ GET /
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | id | UUID | 主键，自动生成 |
-| email | VARCHAR(255) | 唯一，用于登录 |
-| password | VARCHAR(255) | bcrypt 哈希后的密码 |
+| email | VARCHAR(255) | 唯一，用于邮箱登录（可为 NULL） |
+| phone | VARCHAR(20) | 唯一，用于手机号登录（可为 NULL） |
+| password | VARCHAR(255) | bcrypt 哈希后的密码（手机登录用户可为 NULL） |
 | created_at | TIMESTAMPTZ | 创建时间 |
 | updated_at | TIMESTAMPTZ | 更新时间 |
 

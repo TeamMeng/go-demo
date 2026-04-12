@@ -14,6 +14,8 @@
 | JWT (golang-jwt/jwt) | 认证令牌 |
 | bcrypt | 密码哈希 |
 | Redis + Lua | 滑动窗口限流 |
+| Redis + Lua | 验证码存储与校验（原子操作） |
+| 阿里云短信 | 验证码短信发送 |
 
 **设计哲学：简洁、安全、可扩展**。通过分层架构、强制数据隔离和纵深防御策略，确保系统在保持简洁的同时具备良好的安全性和可维护性。
 
@@ -107,7 +109,97 @@ if user_agent, ok := Claims["user_agent"].(string); ok {
 
 **安全收益**：即使 Token 被盗，攻击者也无法在不同 User-Agent 下使用。这是一种低成本的纵深防御策略。
 
-### 3.2 滑动窗口限流
+### 3.2 短信验证码登录
+
+**问题**：传统的账号密码登录需要用户记忆密码，且密码存在泄露风险。短信验证码登录通过手机号 + 一次性验证码的方式，提供更安全的无密码认证体验。
+
+**方案**：使用 Redis Lua 脚本原子化地完成验证码的生成、存储、校验和频率控制。
+
+**架构分层**：
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                     Handler（传输层）                         │
+│  SendLoginSMSCodeHandler    VerifyLoginSMSCodeHandler       │
+├──────────────────────────────────────────────────────────────┤
+│                     Service（业务编排层）                     │
+│                      CodeService                            │
+│    - Send(): 生成验证码 → 写入 Redis → 发送短信               │
+│    - Verify(): 调用 Repository 校验验证码                    │
+├──────────────────────────────────────────────────────────────┤
+│                   Repository（数据访问层）                    │
+│   CodeRepository (Redis)              UserRepository (PG)   │
+│   - Store(): Lua 原子写入              - FindOrCreateByPhone() │
+│   - Verify(): Lua 原子校验             (Serializable 事务)    │
+├──────────────────────────────────────────────────────────────┤
+│                    Redis (Lua 脚本)                          │
+│   phone_code:{biz}:{phone}       phone_code:{biz}:{phone}:cnt │
+│   验证码本体                      剩余验证次数                  │
+└──────────────────────────────────────────────────────────────┘
+```
+
+**验证码写入脚本** (`set_code.lua`)：
+
+```lua
+-- 1. 检查旧验证码 TTL
+local ttl = redis.call("ttl", key)
+
+-- 2. TTL > 540 秒（9分钟）：拒绝发送，防止轰炸
+if ttl > 540 then
+    return -1
+end
+
+-- 3. 写入新验证码（有效期 10 分钟）
+redis.call("set", key, val)
+redis.call("expire", key, 600)
+
+-- 4. 初始化验证次数为 5 次
+redis.call("set", cntKey, 5)
+redis.call("expire", cntKey, 600)
+return 0
+```
+
+**验证码校验脚本** (`verify_code.lua`)：
+
+```lua
+-- 1. 读取验证码和剩余次数
+local storedCode = redis.call("get", key)
+local cntVal = redis.call("get", cntKey)
+
+-- 2. 防御性检查：任一 key 不存在则无效
+if storedCode == false or cntVal == false then
+    return -2
+end
+
+-- 3. 次数耗尽（<=0）拒绝验证
+if tonumber(cntVal) <= 0 then
+    return -1
+end
+
+-- 4. 验证码正确：标记次数为 -1，防止重复使用
+if inputCode == storedCode then
+    redis.call("set", cntKey, -1)
+    return 0
+end
+
+-- 5. 验证码错误：扣减一次次数
+redis.call("decrby", cntKey, 1)
+return -2
+```
+
+**安全特性**：
+
+1. **原子性**：Lua 脚本保证验证码读取、比对、扣减在同一事务内完成，避免并发竞态
+2. **防暴力破解**：每个验证码最多验证 5 次，超过后需重新获取
+3. **防短信轰炸**：同一手机号 540 秒内只能获取一次验证码
+4. **防重复使用**：验证成功后次数置为 -1，验证码立即失效
+5. **并发安全**：`FindOrCreateUserByPhone` 使用 Serializable 事务 + FOR UPDATE 悲观锁
+
+**技术优势**：
+- `go:embed` 将 Lua 脚本编译进二进制，部署无额外文件依赖
+- 验证码和次数使用相同 TTL（600 秒），避免残留数据
+
+### 3.3 滑动窗口限流
 
 **问题**：简单的固定窗口计数器（如「每分钟最多 5 次」）在窗口边界存在突发流量问题。例如 1:59 发送 5 个请求后，2:01 又可立即发送 5 个请求，实际 2 秒内处理了 10 个请求。
 
@@ -160,7 +252,7 @@ end
 3. **内存安全**：`PEXPIRE` 自动清理过期数据，防止 Redis 内存泄漏
 4. **可嵌入**：`go:embed` 将 Lua 脚本编译进二进制，部署无额外文件依赖
 
-### 3.3 数据隔离设计
+### 3.4 数据隔离设计
 
 **问题**：多租户场景下，如何确保用户只能访问自己的数据？
 
@@ -206,8 +298,10 @@ func DeleteTodo(pool *pgxpool.Pool, id int, userID string) error {
 | 方法 | 路径 | 认证 | 说明 |
 |------|------|------|------|
 | GET | `/` | 否 | 健康检查 |
-| POST | `/auth/register` | 否 | 用户注册 |
-| POST | `/auth/login` | 否 | 登录（可限流） |
+| POST | `/auth/register` | 否 | 用户注册（邮箱+密码） |
+| POST | `/auth/login` | 否 | 登录（邮箱+密码，可限流） |
+| POST | `/auth/login/sms` | 否 | 发送短信验证码 |
+| POST | `/auth/login/sms/verify` | 否 | 验证短信验证码并登录 |
 | POST | `/todos` | JWT | 创建待办 |
 | GET | `/todos` | JWT | 获取全部 |
 | GET | `/todos/:id` | JWT | 获取单条 |
@@ -324,11 +418,11 @@ pool.QueryRow(ctx, "SELECT ... WHERE email = '"+email+"'")
 ├─────────────────┤         ├─────────────────┤
 │ id (PK, UUID)   │◄───────┐│ id (PK, SERIAL) │
 │ email (UNIQUE)  │   1:N  ││ title           │
-│ password        │        ││ completed       │
-│ created_at      │        ││ user_id (FK)────┘
-│ updated_at      │        ││ created_at      │
-└─────────────────┘        ││ updated_at      │
-                           └─────────────────┘
+│ phone (UNIQUE)  │        ││ completed       │
+│ password        │        ││ user_id (FK)────┘
+│ created_at      │        ││ created_at      │
+│ updated_at      │        ││ updated_at      │
+└─────────────────┘        └─────────────────┘
 ```
 
 ### 6.2 表结构说明
@@ -338,8 +432,9 @@ pool.QueryRow(ctx, "SELECT ... WHERE email = '"+email+"'")
 | 字段 | 类型 | 约束 | 说明 |
 |------|------|------|------|
 | id | UUID | PK, DEFAULT gen_random_uuid() | 主键 |
-| email | VARCHAR(255) | UNIQUE, NOT NULL | 登录账号 |
-| password | VARCHAR(255) | NOT NULL | bcrypt 哈希 |
+| email | VARCHAR(255) | UNIQUE, NULL | 邮箱登录（可为 NULL） |
+| phone | VARCHAR(20) | UNIQUE, NULL | 手机号登录（可为 NULL） |
+| password | VARCHAR(255) | NULL | bcrypt 哈希（手机登录用户可为 NULL） |
 | created_at | TIMESTAMPTZ | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
 | updated_at | TIMESTAMPTZ | DEFAULT CURRENT_TIMESTAMP | 更新时间 |
 
@@ -619,9 +714,19 @@ todos-rest-api-with-auth/
 │   ├── models/                 # 领域模型
 │   │   ├── todo.go
 │   │   └── user.go
-│   └── repository/             # 数据访问层
-│       ├── todo_repository.go
-│       └── user_repository.go
+│   ├── repository/             # 数据访问层
+│   │   ├── todo_repository.go
+│   │   ├── user_repository.go
+│   │   └── cache/             # Redis 缓存层
+│   │       └── code.go        # 验证码存储与校验
+│   │       └── lua/           # Lua 脚本
+│   │           ├── set_code.lua     # 验证码写入脚本
+│   │           └── verify_code.lua  # 验证码校验脚本
+│   └── service/               # 业务服务层
+│       ├── code.go           # 验证码服务（编排层）
+│       └── sms/              # 短信服务抽象
+│           ├── service.go    # 短信服务接口
+│           └── aliyun/       # 阿里云短信实现
 ├── migrations/                 # 数据库迁移
 │   └── 20260324131714_initial.sql
 ├── docs/                       # 文档
