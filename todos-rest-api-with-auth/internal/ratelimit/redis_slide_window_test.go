@@ -117,7 +117,7 @@ func TestRedisSlidingWindowLimiter(t *testing.T) {
 
 	// 循环发送请求
 	//nolint:revive // 循环计数器用于控制总请求次数
-	for i := 0; i < total; i++ {
+	for range total {
 		limit, err := r.Limit(context.Background(), "TestRedisSlidingWindowLimiter")
 		if err != nil {
 			t.Fatalf("限流检查失败: %v", err)

@@ -48,21 +48,21 @@ local min = now - window
 -- 步骤1: 移除窗口外的过期请求
 -- ZREMRANGEBYSCORE 删除 score 小于窗口起始时间的所有元素
 -- 这里用 '-inf' 表示负无穷，即删除所有 min 之前的请求
-redis.call('ZREMRANGEBYSCORE', key, '-inf', min)
+redis.call("ZREMRANGEBYSCORE", key, "-inf", min)
 
 -- 步骤2: 统计当前窗口内的请求数量
-local cnt = redis.call('ZCOUNT', key, '-inf', '+inf')
+local cnt = redis.call("ZCOUNT", key, "-inf", "+inf")
 
 -- 步骤3: 判断是否需要限流
 if cnt >= threshold then
-    -- 超过阈值，执行限流
-    return "true"
+	-- 超过阈值，执行限流
+	return "true"
 else
-    -- 未超过阈值，记录本次请求并放行
-    -- ZADD 添加元素，score 为时间戳，member 为唯一ID
-    redis.call('ZADD', key, now, uid)
-    -- PEXPIRE 设置过期时间，自动清理数据防止内存泄漏
-    -- 过期时间设为窗口大小，确保窗口滑动后数据被清理
-    redis.call('PEXPIRE', key, window)
-    return "false"
+	-- 未超过阈值，记录本次请求并放行
+	-- ZADD 添加元素，score 为时间戳，member 为唯一ID
+	redis.call("ZADD", key, now, uid)
+	-- PEXPIRE 设置过期时间，自动清理数据防止内存泄漏
+	-- 过期时间设为窗口大小，确保窗口滑动后数据被清理
+	redis.call("PEXPIRE", key, window)
+	return "false"
 end
