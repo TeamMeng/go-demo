@@ -23,6 +23,7 @@ import (
 	"todo_api/internal/repository"
 	"todo_api/internal/repository/cache"
 	"todo_api/internal/service"
+	jwtpkg "todo_api/internal/service/jwt"
 	"todo_api/internal/service/sms/aliyun"
 
 	"github.com/alibabacloud-go/tea/tea"
@@ -98,7 +99,8 @@ func main() {
 
 	// 公开路由：用户注册与登录，无需认证
 	router.POST("/auth/register", handlers.CreateUserHandler(pool))
-	router.POST("/auth/login", ratelimit.NewBuilder(ratelimit.NewRedisSlidingWindowLimiter(redisClient, time.Minute, 5)).Build(), handlers.LoginHandler(pool, cfg))
+	jwtSvc := jwtpkg.NewJWTHandler(cfg)
+	router.POST("/auth/login", ratelimit.NewBuilder(ratelimit.NewRedisSlidingWindowLimiter(redisClient, time.Minute, 5)).Build(), handlers.LoginHandler(pool, cfg, jwtSvc))
 	router.POST("/sms/login/code", handlers.SendLoginSMSCodeHandler(codeSvc))
 	router.POST("/sms/login/verify", handlers.VerifyLoginSMSCodeHandler(pool, cfg, codeSvc))
 
