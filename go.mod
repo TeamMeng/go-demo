@@ -3,7 +3,7 @@ module github.com/TeamMeng/go-demo
 go 1.26.0
 
 require (
-	github.com/cloudwego/eino v0.8.9
+	github.com/cloudwego/eino v0.8.11
 	github.com/cloudwego/eino-ext/components/model/ollama v0.1.9
 	github.com/gorilla/websocket v1.5.3
 	github.com/redis/go-redis/v9 v9.18.0
