@@ -19,6 +19,11 @@ Content-Type: application/json
 ### Set token variable
 @token = {{signin.response.body.token}}
 
+POST http://localhost:8080/auth/refresh_token
+Authorization: Bearer
+
+
+
 ### invalid login with wrong password
 POST http://localhost:80/auth/login
 Content-Type: application/json

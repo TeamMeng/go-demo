@@ -9,8 +9,8 @@ import (
 )
 
 type JWTHandler struct {
-	atKey []byte
-	rtKey []byte
+	AtKey []byte `json:"at_key"`
+	RtKey []byte `json:"rt_key"`
 }
 
 type UserClaims struct {
@@ -26,8 +26,8 @@ type RefreshClaims struct {
 
 func NewJWTHandler(cfg *config.Config) *JWTHandler {
 	return &JWTHandler{
-		atKey: []byte(cfg.JWTSecret),
-		rtKey: []byte(cfg.JWTSecret),
+		AtKey: []byte(cfg.JWTSecret),
+		RtKey: []byte(cfg.JWTSecret),
 	}
 }
 
@@ -40,7 +40,7 @@ func (h JWTHandler) SetJwtToken(ctx *gin.Context, uid string) error {
 		UserAgent: ctx.Request.UserAgent(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenStr, err := token.SignedString(h.atKey)
+	tokenStr, err := token.SignedString(h.AtKey)
 	if err != nil {
 		return err
 	}
@@ -56,7 +56,7 @@ func (h JWTHandler) SetRefreshToken(ctx *gin.Context, uid string) error {
 		Uid: uid,
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenStr, err := token.SignedString(h.rtKey)
+	tokenStr, err := token.SignedString(h.RtKey)
 	if err != nil {
 		return err
 	}

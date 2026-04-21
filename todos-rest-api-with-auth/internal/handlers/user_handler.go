@@ -10,10 +10,13 @@ package handlers
 
 import (
 	"database/sql"
+	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
 	"todo_api/internal/config"
+	"todo_api/internal/middleware"
 	"todo_api/internal/models"
 	"todo_api/internal/repository"
 	"todo_api/internal/service"
@@ -87,21 +90,6 @@ func CreateUserHandler(pool *pgxpool.Pool) gin.HandlerFunc {
 	}
 }
 
-// LoginHandler 返回一个 Gin HandlerFunc，用于处理用户登录请求并签发 JWT Token。
-//
-// 路由：POST /auth/login（公开）
-//
-// 处理流程：
-//  1. 绑定并校验请求 JSON，提取邮箱和密码。
-//  2. 调用 repository.GetUserByEmail 查询用户信息；若查询失败（用户不存在），返回 401。
-//  3. 使用 bcrypt.CompareHashAndPassword 比对明文密码与数据库中的哈希密码；不匹配返回 401。
-//  4. 构造 JWT Claims，包含 user_id、email 和 24 小时后的过期时间（exp）。
-//  5. 使用 HS256 算法和 cfg.JWTSecret 对 Token 进行签名。
-//  6. 成功返回 200 及包含 Token 的 LoginResponse。
-//
-// 参数：
-//   - pool: PostgreSQL 连接池。
-//   - cfg: 应用配置，用于获取 JWT 签名密钥。
 func LoginHandler(pool *pgxpool.Pool, cfg *config.Config, jwtSvc *jwtpkg.JWTHandler) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		var req LoginRequest
@@ -156,20 +144,6 @@ func TestProtectHandler() gin.HandlerFunc {
 	}
 }
 
-// SendLoginSMSCodeHandler 返回一个 Gin HandlerFunc，用于向用户手机发送登录验证码。
-//
-// 路由：POST /auth/login/sms（公开）
-//
-// 处理流程：
-//  1. 绑定并校验请求 JSON，确保 phone 字段存在。
-//  2. 调用 CodeService.Send 生成 6 位验证码、写入 Redis 并发送短信。
-//  3. 发送失败时返回 500，由 service 层控制发送频率（540 秒冷却期）。
-//  4. 成功返回 200。
-//
-// 安全说明：
-//
-//	发送频率由 Lua 脚本在 Redis 层面控制，同一手机号 540 秒内只能获取一次验证码。
-//	避免短信轰炸攻击。
 func SendLoginSMSCodeHandler(codeSvc *service.CodeService) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		var req SmsLoginRequest
@@ -188,22 +162,6 @@ func SendLoginSMSCodeHandler(codeSvc *service.CodeService) gin.HandlerFunc {
 	}
 }
 
-// VerifyLoginSMSCodeHandler 返回一个 Gin HandlerFunc，用于验证短信验证码并完成登录。
-//
-// 路由：POST /auth/login/sms/verify（公开）
-//
-// 处理流程：
-//  1. 绑定并校验请求 JSON，提取 phone 和 code。
-//  2. 调用 CodeService.Verify 校验验证码：
-//     - 验证成功：Lua 脚本自动将验证次数置为 -1，防止验证码重复使用。
-//     - 验证失败：返回 401。
-//  3. 验证码通过后，调用 repository.FindOrCreateUserByPhone 查找或创建账户。
-//  4. 签发 JWT Token（24 小时有效），并绑定 User-Agent。
-//  5. 返回 Token 给客户端。
-//
-// 安全说明：
-//   - 验证码通过后立即使用，不支持「先验证再决定是否登录」的犹豫期。
-//   - JWT 绑定 User-Agent，防止 Token 被盗后在其他客户端使用。
 func VerifyLoginSMSCodeHandler(pool *pgxpool.Pool, cfg *config.Config, codeSvc *service.CodeService) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		var req SmsLoginVerifyRequest
@@ -249,6 +207,46 @@ func VerifyLoginSMSCodeHandler(pool *pgxpool.Pool, cfg *config.Config, codeSvc *
 		ctx.JSON(http.StatusOK, gin.H{
 			"message": "Login successfully",
 			"token":   tokenString,
+		})
+	}
+}
+
+func RefreshTokenHandler(cfg *config.Config, jwtSvc *jwtpkg.JWTHandler) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		refreshToken := middleware.ExtractToken(ctx)
+		if refreshToken == "" {
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Authorization header required"})
+			return
+		}
+
+		token, err := jwt.Parse(refreshToken, func(t *jwt.Token) (any, error) {
+			// 强制校验签名算法，防止算法切换攻击（alg:none、RS256 等）
+			if t.Method.Alg() != jwt.SigningMethodHS256.Alg() {
+				return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+			}
+			return []byte(cfg.JWTSecret), nil
+		})
+		if err != nil || !token.Valid {
+			log.Printf("JWT parse error: %v, token.Valid: %v", err, token != nil && token.Valid)
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
+			return
+		}
+
+		Claims, ok := token.Claims.(jwt.MapClaims)
+		if !ok {
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token Claims"})
+			return
+		}
+
+		userID, ok := Claims["user_id"].(string)
+		if !ok {
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token Claims"})
+			return
+		}
+
+		jwtSvc.SetRefreshToken(ctx, userID)
+		ctx.JSON(http.StatusOK, gin.H{
+			"message": "Refresh token successfully",
 		})
 	}
 }

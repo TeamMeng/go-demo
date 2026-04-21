@@ -100,6 +100,7 @@ func main() {
 	// 公开路由：用户注册与登录，无需认证
 	router.POST("/auth/register", handlers.CreateUserHandler(pool))
 	jwtSvc := jwtpkg.NewJWTHandler(cfg)
+	router.POST("/auth/refresh_token", handlers.RefreshTokenHandler(cfg, jwtSvc))
 	router.POST("/auth/login", ratelimit.NewBuilder(ratelimit.NewRedisSlidingWindowLimiter(redisClient, time.Minute, 5)).Build(), handlers.LoginHandler(pool, cfg, jwtSvc))
 	router.POST("/sms/login/code", handlers.SendLoginSMSCodeHandler(codeSvc))
 	router.POST("/sms/login/verify", handlers.VerifyLoginSMSCodeHandler(pool, cfg, codeSvc))
