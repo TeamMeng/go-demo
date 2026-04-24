@@ -20,7 +20,12 @@ func TestChannel(t *testing.T) {
 	ch = make(chan int, 10)
 	ch <- 10
 
-	// 延伸练习：
-	// 1. 再从缓冲 channel 读取一次，观察先进先出行为。
-	// 2. 尝试关闭 channel，并思考关闭后的读取结果。
+	ch = make(chan int, 2)
+	ch <- 123
+	val, ok := <-ch
+	fmt.Printf("val: %v, ok: %v\n", val, ok)
+	ch <- 234
+	close(ch)
+	val, ok = <-ch
+	fmt.Printf("val: %v, ok: %v\n", val, ok)
 }
