@@ -13,6 +13,11 @@ func TestProducer(t *testing.T) {
 	cfg := sarama.NewConfig()
 	cfg.Producer.Return.Successes = true
 	producer, err := sarama.NewSyncProducer(addrs, cfg)
+	if err != nil {
+		t.Skipf("kafka is not available: %v", err)
+		return
+	}
+	defer producer.Close()
 	assert.NoError(t, err)
 	_, _, err = producer.SendMessage(&sarama.ProducerMessage{
 		Topic: "test_topic",
