@@ -12,6 +12,7 @@ var addrs = []string{"localhost:9094"}
 func TestProducer(t *testing.T) {
 	cfg := sarama.NewConfig()
 	cfg.Producer.Return.Successes = true
+	cfg.Producer.Partitioner = sarama.NewRoundRobinPartitioner
 	producer, err := sarama.NewSyncProducer(addrs, cfg)
 	if err != nil {
 		t.Skipf("kafka is not available: %v", err)
@@ -28,6 +29,43 @@ func TestProducer(t *testing.T) {
 				Value: []byte("123456"),
 			},
 		},
+		Metadata: "This is metadata",
 	})
 	assert.NoError(t, err)
+}
+
+func TestAsyncProducer(t *testing.T) {
+	cfg := sarama.NewConfig()
+	cfg.Producer.Return.Successes = true
+	cfg.Producer.Return.Errors = true
+	producer, err := sarama.NewAsyncProducer(addrs, cfg)
+	if err != nil {
+		t.Skipf("kafka is not available: %v", err)
+		return
+	}
+	defer producer.Close()
+	assert.NoError(t, err)
+
+	msgCh := producer.Input()
+	msgCh <- &sarama.ProducerMessage{
+		Topic: "test_topic",
+		Value: sarama.StringEncoder("Hi"),
+		Headers: []sarama.RecordHeader{
+			{
+				Key:   []byte("trace_id"),
+				Value: []byte("123456"),
+			},
+		},
+		Metadata: "This is metadata",
+	}
+
+	errCh := producer.Errors()
+	successCh := producer.Successes()
+
+	select {
+	case err := <-errCh:
+		t.Log("error in producer", err.Err, err.Msg.Value)
+	case <-successCh:
+		t.Log("success in producer")
+	}
 }
