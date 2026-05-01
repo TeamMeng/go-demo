@@ -1,0 +1,29 @@
+### post signup
+POST http://localhost:8080/users/signup
+Content-Type: application/json
+
+{
+    "email": "TeamMeng@email.com",
+    "password": "Abc123!!!",
+    "confirmPassword": "Abc123!!!"
+}
+
+### post signup password mismatch
+POST http://localhost:8080/users/signup
+Content-Type: application/json
+
+{
+    "email": "TeamMeng@email.com",
+    "password": "Abc123!!!",
+    "confirmPassword": "Abc!!!"
+}
+
+### post signup invalid email
+POST http://localhost:8080/users/signup
+Content-Type: application/json
+
+{
+    "email": "TeamMeng",
+    "password": "Abc123!!!",
+    "confirmPassword": "Abc123!!!"
+}
