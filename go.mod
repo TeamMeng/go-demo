@@ -3,7 +3,7 @@ module github.com/TeamMeng/go-demo
 go 1.26.0
 
 require (
-	github.com/cloudwego/eino v0.8.9
+	github.com/cloudwego/eino v0.8.13
 	github.com/cloudwego/eino-ext/components/model/ollama v0.1.9
 	github.com/dlclark/regexp2 v1.11.4
 	github.com/gin-gonic/gin v1.10.0
