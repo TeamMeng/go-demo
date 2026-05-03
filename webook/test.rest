@@ -3,7 +3,7 @@ POST http://localhost:8080/users/signup
 Content-Type: application/json
 
 {
-    "email": "TeamMeng@email.com",
+    "email": "TeamAlice@email.com",
     "password": "Abc123!!!",
     "confirmPassword": "Abc123!!!"
 }
@@ -27,3 +27,26 @@ Content-Type: application/json
     "password": "Abc123!!!",
     "confirmPassword": "Abc123!!!"
 }
+
+
+### valid login
+POST http://localhost:8080/users/login
+Content-Type: application/json
+
+{
+    "email": "TeamAlice@email.com",
+    "password": "Abc123!!!"
+}
+
+### invalid login
+POST http://localhost:8080/users/login
+Content-Type: application/json
+
+{
+    "email": "TeamAlice@email.com",
+    "password": "Abc122!!!"
+}
+
+### profile
+GET http://localhost:8080/users/profile
+Cookie: mysession=MTc3NzgwODQ1N3xEWDhFQVFMX2dBQUJFQUVRQUFBZl80QUFBUVp6ZEhKcGJtY01DQUFHZFhObGNrbGtCV2x1ZERZMEJBSUFCQT09fNQwsIBOamYsjFOClr7LYanzjrSKTzZOdoI2-Fh9fhGR; Path=/; Expires=Tue, 02 Jun 2026 11:40:57 GMT; Max-Age=2592000; Secure; SameSite=None

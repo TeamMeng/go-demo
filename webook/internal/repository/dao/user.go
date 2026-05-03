@@ -9,8 +9,18 @@ import (
 	"gorm.io/gorm"
 )
 
+type User struct {
+	Id       int64  `gorm:"primaryKey,autoIncrement"`
+	Email    string `gorm:"unique"`
+	Password string
+
+	Ctime int64
+	Utime int64
+}
+
 var (
 	ErrUserDuplicalicate = errors.New("user email already exists")
+	ErrUserNotFound      = gorm.ErrRecordNotFound
 )
 
 type UserDAO struct {
@@ -40,11 +50,8 @@ func (dao *UserDAO) Insert(ctx context.Context, u User) error {
 	return err
 }
 
-type User struct {
-	Id       int64  `gorm:"primaryKey,autoIncrement"`
-	Email    string `gorm:"unique"`
-	Password string
-
-	Ctime int64
-	Utime int64
+func (dao *UserDAO) FindUserByEmail(ctx context.Context, email string) (User, error) {
+	var u User
+	err := dao.db.WithContext(ctx).Where("email = ?", email).First(&u).Error
+	return u, err
 }
