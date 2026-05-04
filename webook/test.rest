@@ -49,4 +49,22 @@ Content-Type: application/json
 
 ### profile
 GET http://localhost:8080/users/profile
-Cookie: mysession=MTc3NzgwODQ1N3xEWDhFQVFMX2dBQUJFQUVRQUFBZl80QUFBUVp6ZEhKcGJtY01DQUFHZFhObGNrbGtCV2x1ZERZMEJBSUFCQT09fNQwsIBOamYsjFOClr7LYanzjrSKTzZOdoI2-Fh9fhGR; Path=/; Expires=Tue, 02 Jun 2026 11:40:57 GMT; Max-Age=2592000; Secure; SameSite=None
+Cookie: mysession=MTc3Nzg2MjUxM3xkc3NWcVFYR1FhcHhOS0VTVTBEN2xWSENJZndyNXYwSjA5OFJDVzM0LWhNWHdIelFvaGdPT3VmQlJVQmJNODAwVTN4S3BEZEJnM0hwNVp3Y3MtbVB1NWxSanlUaDJ0dHZ8UzUeuHDlCSCs-sjKiRgd6hLOA4uzlOtxmQ90eIZGU4M=; Path=/; Expires=Wed, 03 Jun 2026 02:41:53 GMT; Max-Age=2592000
+
+### logout
+GET http://localhost:8080/users/logout
+Cookie: mysession=MTc3Nzg1NzI2MXw4WlhLNjdZRV9pN0RkT29jMVdZdWlIV3A2X2VaRUVCY0xleWFSZld4MFVIUnhYYXoyaXFQZVNQYjM3Qm9XbHNsQVBBejMzUUJQOFQ4bU9JcVZ4WGZkU2VEWnMzSWE2WXV8kjL46Us8jcEl5qGaslFqv_n3GJQltCU4KVZ50bJmg2w=; Path=/; Expires=Wed, 03 Jun 2026 01:14:21 GMT; Max-Age=2592000
+
+
+### valid login with JWT
+POST http://localhost:8080/users/loginJWT
+Content-Type: application/json
+
+{
+    "email": "TeamAlice@email.com",
+    "password": "Abc123!!!"
+}
+
+### profile
+GET http://localhost:8080/users/profile
+Authorization: Bearer eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.e30.wrbfSdEBoGt9M3jqs7W41zJL2iThA3xVHxK8MMcEefTCEP2r6tyDchCwhl5D6_WjqouB5pEJ2OIkgbC0xRzP_Q

@@ -2,6 +2,7 @@ package web
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/dlclark/regexp2"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 type UserHandler struct {
@@ -37,8 +39,9 @@ func (u *UserHandler) RegisterRoutes(server *gin.Engine) {
 		POST("/signup", u.Signup).
 		POST("/login", u.Login).
 		POST("/edit", u.Edit).
-		GET("/profile", u.Profile)
-
+		GET("/profile", u.Profile).
+		GET("/logout", u.Logout).
+		POST("/loginJWT", u.LoginJWT)
 }
 
 func (u *UserHandler) Signup(ctx *gin.Context) {
@@ -139,4 +142,49 @@ func (u *UserHandler) Edit(ctx *gin.Context) {
 
 func (u *UserHandler) Profile(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"message": "This is your profile"})
+}
+
+func (u *UserHandler) Logout(ctx *gin.Context) {
+	sess := sessions.Default(ctx)
+	sess.Options(sessions.Options{
+		MaxAge: 60,
+	})
+	sess.Save()
+	ctx.JSON(http.StatusOK, gin.H{"message": "logout successfully"})
+}
+
+func (u *UserHandler) LoginJWT(ctx *gin.Context) {
+	type LoginReq struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
+	var req LoginReq
+	if err := ctx.Bind(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"message": "jsonReq"})
+		return
+	}
+
+	user, err := u.svc.Login(ctx, req.Email, req.Password)
+	if errors.Is(err, service.ErrInvalidUserOrPassword) {
+		ctx.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+		return
+	}
+
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "system error"})
+		return
+	}
+
+	token := jwt.New(jwt.SigningMethodHS512)
+	tokenStr, err := token.SignedString([]byte("EP4UNRkorqfjiac2bt6CVH1QuCEYlISP"))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "failed to generate token"})
+		return
+	}
+
+	fmt.Println(user)
+
+	ctx.Header("x-jwt-token", tokenStr)
+	ctx.JSON(http.StatusOK, gin.H{"message": "login successfully"})
 }
