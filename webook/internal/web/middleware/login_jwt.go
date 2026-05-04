@@ -16,7 +16,8 @@ type LoginJWTMiddlewareBuilder struct {
 
 type UserClaims struct {
 	jwt.RegisteredClaims
-	Uid int64
+	Uid       int64
+	UserAgent string
 }
 
 func NewLoginJWTMiddlewareBuilder() *LoginJWTMiddlewareBuilder {
@@ -61,9 +62,21 @@ func (l *LoginJWTMiddlewareBuilder) Build() gin.HandlerFunc {
 			return
 		}
 
+		if claims.UserAgent != ctx.Request.UserAgent() {
+			ctx.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+
 		now := time.Now()
 		if claims.ExpiresAt.Sub(now) < time.Second*50 {
+			claims.ExpiresAt = jwt.NewNumericDate(time.Now().Add(time.Minute))
+			tokenStr, err = token.SignedString([]byte("EP4UNRkorqfjiac2bt6CVH1QuCEYlISP"))
+			if err != nil {
+				ctx.JSON(http.StatusInternalServerError, gin.H{"message": "failed to generate token"})
+				return
+			}
 
+			ctx.Header("x-jwt-token", tokenStr)
 		}
 
 		ctx.Set("claims", claims)

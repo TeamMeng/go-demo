@@ -8,7 +8,9 @@ import (
 	"github.com/TeamMeng/go-demo/webook/internal/repository/dao"
 	"github.com/TeamMeng/go-demo/webook/internal/service"
 	"github.com/TeamMeng/go-demo/webook/internal/web/middleware"
+	"github.com/TeamMeng/go-demo/webook/pkg/ginx/middlewares/ratelimit"
 	"github.com/gin-contrib/cors"
+	"github.com/redis/go-redis/v9"
 
 	// "github.com/gin-contrib/sessions"
 	// "github.com/gin-contrib/sessions/redis"
@@ -71,6 +73,12 @@ func initUser(server *gin.Engine, db *gorm.DB) {
 	// 	IgnorePaths("/users/loginJWT").
 	// 	Build(),
 	// )
+
+	redisClient := redis.NewClient(&redis.Options{
+		Addr: "localhost:6379",
+	})
+
+	server.Use(ratelimit.NewBuilder(ratelimit.NewRedisSlidingWindowLimiter(redisClient, time.Minute, 5)).Build())
 
 	server.Use(middleware.NewLoginJWTMiddlewareBuilder().
 		IgnorePaths("/users/signup").
