@@ -2,12 +2,13 @@ package web
 
 import (
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/TeamMeng/go-demo/webook/internal/domain"
 	"github.com/TeamMeng/go-demo/webook/internal/service"
+	"github.com/TeamMeng/go-demo/webook/internal/web/middleware"
 	"github.com/dlclark/regexp2"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
@@ -141,6 +142,20 @@ func (u *UserHandler) Edit(ctx *gin.Context) {
 }
 
 func (u *UserHandler) Profile(ctx *gin.Context) {
+	c, ok := ctx.Get("claims")
+	if !ok {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "system error"})
+		return
+	}
+
+	claims, ok := c.(*middleware.UserClaims)
+	if !ok {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "system error"})
+		return
+	}
+
+	println(claims.Uid)
+
 	ctx.JSON(http.StatusOK, gin.H{"message": "This is your profile"})
 }
 
@@ -176,14 +191,19 @@ func (u *UserHandler) LoginJWT(ctx *gin.Context) {
 		return
 	}
 
-	token := jwt.New(jwt.SigningMethodHS512)
+	claims := middleware.UserClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute)),
+		},
+		Uid: user.Id,
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS512, claims)
 	tokenStr, err := token.SignedString([]byte("EP4UNRkorqfjiac2bt6CVH1QuCEYlISP"))
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "failed to generate token"})
 		return
 	}
-
-	fmt.Println(user)
 
 	ctx.Header("x-jwt-token", tokenStr)
 	ctx.JSON(http.StatusOK, gin.H{"message": "login successfully"})

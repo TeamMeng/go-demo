@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -11,6 +12,11 @@ import (
 
 type LoginJWTMiddlewareBuilder struct {
 	paths []string
+}
+
+type UserClaims struct {
+	jwt.RegisteredClaims
+	Uid int64
 }
 
 func NewLoginJWTMiddlewareBuilder() *LoginJWTMiddlewareBuilder {
@@ -40,7 +46,8 @@ func (l *LoginJWTMiddlewareBuilder) Build() gin.HandlerFunc {
 			return
 		}
 		tokenStr := segs[1]
-		token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (any, error) {
+		claims := &UserClaims{}
+		token, err := jwt.ParseWithClaims(tokenStr, claims, func(t *jwt.Token) (any, error) {
 			return []byte("EP4UNRkorqfjiac2bt6CVH1QuCEYlISP"), nil
 		})
 
@@ -49,9 +56,16 @@ func (l *LoginJWTMiddlewareBuilder) Build() gin.HandlerFunc {
 			return
 		}
 
-		if token == nil || !token.Valid {
+		if token == nil || !token.Valid || claims.Uid == 0 {
 			ctx.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
+
+		now := time.Now()
+		if claims.ExpiresAt.Sub(now) < time.Second*50 {
+
+		}
+
+		ctx.Set("claims", claims)
 	}
 }
