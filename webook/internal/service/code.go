@@ -11,9 +11,18 @@ import (
 
 const codeTplId = "100001"
 
+var ErrVerifyCodeTooManyTimes = repository.ErrVerifyCodeTooManyTimes
+
 type CodeService struct {
 	repo   *repository.CodeRepository
 	smsSvc sms.Service
+}
+
+func NewCodeService(repo *repository.CodeRepository, smsSvc sms.Service) *CodeService {
+	return &CodeService{
+		repo:   repo,
+		smsSvc: smsSvc,
+	}
 }
 
 func (svc *CodeService) Send(ctx context.Context, biz string, phone string) error {

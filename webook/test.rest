@@ -72,3 +72,20 @@ Authorization: Bearer eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NzgxMTMwM
 
 ### test webook
 GET http://live.webook.com/hello
+
+### sms login
+POST http://localhost:8080/users/login_sms/code/send
+Content-Type: application/json
+
+{
+    "phone": "12345678904"
+}
+
+### verify sms code
+POST http://localhost:8080/users/login_sms/
+Content-Type: application/json
+
+{
+    "phone": "12345678903",
+    "code": "762691"
+}

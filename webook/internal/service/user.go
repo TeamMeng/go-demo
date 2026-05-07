@@ -63,6 +63,23 @@ func HashPassword(password string) (string, error) {
 }
 
 func (svc *UserService) Profile(ctx context.Context, id int64) (domain.User, error) {
-	// return svc.repo.FindUserByEmail(ctx, id)
-	panic("")
+	u, err := svc.repo.FindUserById(ctx, id)
+	return u, err
+}
+
+func (svc *UserService) FindOrCreate(ctx context.Context, phone string) (domain.User, error) {
+	u, err := svc.repo.FindUserByPhone(ctx, phone)
+	if err != repository.ErrUserNotFound {
+		return u, err
+	}
+
+	u = domain.User{
+		Phone: phone,
+	}
+	err = svc.repo.Create(ctx, u)
+	if err != nil {
+		return u, err
+	}
+
+	return svc.repo.FindUserByPhone(ctx, phone)
 }

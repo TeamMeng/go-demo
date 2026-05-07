@@ -8,6 +8,7 @@ import (
 	"github.com/TeamMeng/go-demo/webook/internal/repository/cache"
 	"github.com/TeamMeng/go-demo/webook/internal/repository/dao"
 	"github.com/TeamMeng/go-demo/webook/internal/service"
+	"github.com/TeamMeng/go-demo/webook/internal/service/sms/memory"
 	"github.com/TeamMeng/go-demo/webook/internal/web/middleware"
 	"github.com/TeamMeng/go-demo/webook/pkg/ginx/middlewares/ratelimit"
 	"github.com/gin-contrib/cors"
@@ -79,20 +80,27 @@ func initUser(server *gin.Engine, db *gorm.DB) {
 		Addr: "localhost:6379",
 	})
 
-	server.Use(ratelimit.NewBuilder(ratelimit.NewRedisSlidingWindowLimiter(redisClient, time.Minute, 5)).Build())
+	server.Use(ratelimit.NewBuilder(ratelimit.NewRedisSlidingWindowLimiter(redisClient, time.Minute, 200)).Build())
 
 	server.Use(middleware.NewLoginJWTMiddlewareBuilder().
 		IgnorePaths("/users/signup").
 		IgnorePaths("/users/login").
 		IgnorePaths("/users/loginJWT").
+		IgnorePaths("/users/login_sms/code/send").
+		IgnorePaths("/users/login_sms").
 		Build(),
 	)
+
+	codeCache := cache.NewCodeCache(redisClient)
+	codeRepo := repository.NewCodeRepository(codeCache)
+	smsSvc := memory.NewService()
 
 	cache := cache.NewUserCache(redisClient)
 	ud := dao.NewUserDAO(db)
 	repo := repository.NewUserRepository(ud, cache)
 
 	svc := service.NewUserService(repo)
-	u := NewUserHandler(svc)
+	codeSvc := service.NewCodeService(codeRepo, smsSvc)
+	u := NewUserHandler(svc, codeSvc)
 	u.RegisterRoutes(server)
 }

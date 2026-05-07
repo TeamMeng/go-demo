@@ -15,13 +15,16 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+const biz = "login"
+
 type UserHandler struct {
 	svc         *service.UserService
+	codeSvc     *service.CodeService
 	emailExp    *regexp2.Regexp
 	passwordExp *regexp2.Regexp
 }
 
-func NewUserHandler(svc *service.UserService) *UserHandler {
+func NewUserHandler(svc *service.UserService, codeSvc *service.CodeService) *UserHandler {
 	const (
 		emailRegexPattern    = `^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`
 		passwordRegexPattern = `^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#\$%\^&\*]).{8,}$`
@@ -30,6 +33,7 @@ func NewUserHandler(svc *service.UserService) *UserHandler {
 	passwordExp := regexp2.MustCompile(passwordRegexPattern, regexp2.None)
 	return &UserHandler{
 		svc:         svc,
+		codeSvc:     codeSvc,
 		emailExp:    emailExp,
 		passwordExp: passwordExp,
 	}
@@ -42,7 +46,9 @@ func (u *UserHandler) RegisterRoutes(server *gin.Engine) {
 		POST("/edit", u.Edit).
 		GET("/profile", u.Profile).
 		GET("/logout", u.Logout).
-		POST("/loginJWT", u.LoginJWT)
+		POST("/loginJWT", u.LoginJWT).
+		POST("/login_sms/code/send", u.SendLoginSMS).
+		POST("/login_sms", u.LoginSMS)
 }
 
 func (u *UserHandler) Signup(ctx *gin.Context) {
@@ -191,21 +197,126 @@ func (u *UserHandler) LoginJWT(ctx *gin.Context) {
 		return
 	}
 
+	if err := u.setJWTToken(ctx, user.Id); err != nil {
+		ctx.JSON(http.StatusInternalServerError, Result{
+			Code: 5,
+			Msg:  "system error",
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"message": "login successfully"})
+}
+
+func (u *UserHandler) SendLoginSMS(ctx *gin.Context) {
+	type SMSReq struct {
+		Phone string `json:"phone"`
+	}
+
+	var req SMSReq
+	if err := ctx.Bind(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"message": "jsonReq"})
+		return
+	}
+
+	if req.Phone == "" {
+		ctx.JSON(http.StatusBadRequest, Result{
+			Code: 4,
+			Msg:  "phone cannot be empty",
+		})
+		return
+	}
+
+	if err := u.codeSvc.Send(ctx, biz, req.Phone); err != nil {
+		ctx.JSON(http.StatusInternalServerError, Result{
+			Code: 5,
+			Msg:  "system err",
+		})
+
+	}
+
+	u.svc.FindOrCreate(ctx, req.Phone)
+
+	if err := u.setJWTToken(ctx, 123); err != nil {
+
+	}
+
+	ctx.JSON(http.StatusOK, Result{
+		Msg: "send successfully",
+	})
+
+}
+
+func (u *UserHandler) LoginSMS(ctx *gin.Context) {
+	type SMSLoginReq struct {
+		Phone string `json:"phone"`
+		Code  string `json:"code"`
+	}
+
+	var req SMSLoginReq
+	if err := ctx.Bind(&req); err != nil {
+		ctx.JSON(http.StatusInternalServerError, Result{
+			Code: 5,
+			Msg:  "system error",
+		})
+		return
+	}
+
+	ok, err := u.codeSvc.Verify(ctx, biz, req.Phone, req.Code)
+
+	if err != nil {
+		if errors.Is(service.ErrVerifyCodeTooManyTimes, err) {
+			ctx.JSON(http.StatusBadRequest, Result{
+				Code: 4,
+				Msg:  "verify code too many times",
+			})
+			return
+		}
+		ctx.JSON(http.StatusInternalServerError, Result{
+			Code: 5,
+			Msg:  "system error",
+		})
+		return
+	}
+
+	if !ok {
+		ctx.JSON(http.StatusOK, Result{
+			Code: 4,
+			Msg:  "verify code error",
+		})
+	}
+
+	user, err := u.svc.FindOrCreate(ctx, req.Phone)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, Result{
+			Code: 5,
+			Msg:  "system error",
+		})
+		return
+	}
+
+	u.setJWTToken(ctx, user.Id)
+
+	ctx.JSON(http.StatusOK, Result{
+		Msg: "code verify successfully",
+	})
+}
+
+func (u *UserHandler) setJWTToken(ctx *gin.Context, uid int64) error {
 	claims := middleware.UserClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute)),
 		},
-		Uid:       user.Id,
+		Uid:       uid,
 		UserAgent: ctx.Request.UserAgent(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS512, claims)
 	tokenStr, err := token.SignedString([]byte("EP4UNRkorqfjiac2bt6CVH1QuCEYlISP"))
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "failed to generate token"})
-		return
+		return err
 	}
 
 	ctx.Header("x-jwt-token", tokenStr)
-	ctx.JSON(http.StatusOK, gin.H{"message": "login successfully"})
+	return nil
 }
