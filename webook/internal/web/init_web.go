@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/TeamMeng/go-demo/webook/internal/repository"
+	"github.com/TeamMeng/go-demo/webook/internal/repository/cache"
 	"github.com/TeamMeng/go-demo/webook/internal/repository/dao"
 	"github.com/TeamMeng/go-demo/webook/internal/service"
 	"github.com/TeamMeng/go-demo/webook/internal/web/middleware"
@@ -87,8 +88,10 @@ func initUser(server *gin.Engine, db *gorm.DB) {
 		Build(),
 	)
 
+	cache := cache.NewUserCache(redisClient)
 	ud := dao.NewUserDAO(db)
-	repo := repository.NewUserRepository(ud)
+	repo := repository.NewUserRepository(ud, cache)
+
 	svc := service.NewUserService(repo)
 	u := NewUserHandler(svc)
 	u.RegisterRoutes(server)

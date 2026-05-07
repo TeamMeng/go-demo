@@ -67,7 +67,7 @@ Content-Type: application/json
 
 ### profile
 GET http://localhost:8080/users/profile
-Authorization: Bearer eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3Nzc5MDQ1NDIsIlVpZCI6MiwiVXNlckFnZW50IjoidnNjb2RlLXJlc3RjbGllbnQifQ.ZnEYE7HF9anzN4k6JG8h5OJcvLIOTWrUwUru1guFPkU9xDJqz-3sb9RNHBDc-2E7zbZAJnvjk3mamII3kz4LBQ
+Authorization: Bearer eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NzgxMTMwMTMsIlVpZCI6MiwiVXNlckFnZW50IjoidnNjb2RlLXJlc3RjbGllbnQifQ.ScOSsP3xH7lUPMOH3A7_kxSWZTHLooFnXzTZ-Lh6H6mdIfV3RpYV24QZqYk4XbUKOgotcuKdHsGCnYb6m_kP8w
 
 
 ### test webook

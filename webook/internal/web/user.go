@@ -38,7 +38,7 @@ func NewUserHandler(svc *service.UserService) *UserHandler {
 func (u *UserHandler) RegisterRoutes(server *gin.Engine) {
 	server.Group("/users").
 		POST("/signup", u.Signup).
-		POST("/login", u.Login).
+		// POST("/login", u.Login).
 		POST("/edit", u.Edit).
 		GET("/profile", u.Profile).
 		GET("/logout", u.Logout).

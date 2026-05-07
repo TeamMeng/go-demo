@@ -61,3 +61,8 @@ func HashPassword(password string) (string, error) {
 
 	return string(hashBytes), nil
 }
+
+func (svc *UserService) Profile(ctx context.Context, id int64) (domain.User, error) {
+	// return svc.repo.FindUserByEmail(ctx, id)
+	panic("")
+}
