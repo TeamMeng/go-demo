@@ -66,7 +66,7 @@ func (r *UserRepository) FindUserById(ctx context.Context, id int64) (domain.Use
 func (r *UserRepository) FindUserByPhone(ctx context.Context, phone string) (domain.User, error) {
 	u, err := r.dao.FindUserByPhone(ctx, phone)
 	if err != nil {
-		return domain.User{}, nil
+		return domain.User{}, err
 	}
 
 	return r.entityToDomain(u), nil
