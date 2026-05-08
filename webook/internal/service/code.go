@@ -14,11 +14,11 @@ const codeTplId = "100001"
 var ErrVerifyCodeTooManyTimes = repository.ErrVerifyCodeTooManyTimes
 
 type CodeService struct {
-	repo   *repository.CodeRepository
+	repo   repository.CodeRepository
 	smsSvc sms.Service
 }
 
-func NewCodeService(repo *repository.CodeRepository, smsSvc sms.Service) *CodeService {
+func NewCodeService(repo repository.CodeRepository, smsSvc sms.Service) *CodeService {
 	return &CodeService{
 		repo:   repo,
 		smsSvc: smsSvc,

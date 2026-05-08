@@ -15,23 +15,30 @@ var (
 	ErrUserNotFound      = dao.ErrUserNotFound
 )
 
-type UserRepository struct {
-	dao   *dao.UserDAO
-	cache *cache.UserCache
+type UserRepository interface {
+	Create(ctx context.Context, u domain.User) error
+	FindUserByEmail(ctx context.Context, email string) (domain.User, error)
+	FindUserById(ctx context.Context, id int64) (domain.User, error)
+	FindUserByPhone(ctx context.Context, phone string) (domain.User, error)
 }
 
-func NewUserRepository(dao *dao.UserDAO, cache *cache.UserCache) *UserRepository {
-	return &UserRepository{
+type CachedUserRepository struct {
+	dao   dao.UserDAO
+	cache cache.UserCache
+}
+
+func NewUserRepository(dao dao.UserDAO, cache cache.UserCache) UserRepository {
+	return &CachedUserRepository{
 		dao:   dao,
 		cache: cache,
 	}
 }
 
-func (r *UserRepository) Create(ctx context.Context, u domain.User) error {
+func (r *CachedUserRepository) Create(ctx context.Context, u domain.User) error {
 	return r.dao.Insert(ctx, r.domainToEntity(u))
 }
 
-func (r *UserRepository) FindUserByEmail(ctx context.Context, email string) (domain.User, error) {
+func (r *CachedUserRepository) FindUserByEmail(ctx context.Context, email string) (domain.User, error) {
 	u, err := r.dao.FindUserByEmail(ctx, email)
 	if err != nil {
 		return domain.User{}, err
@@ -40,7 +47,7 @@ func (r *UserRepository) FindUserByEmail(ctx context.Context, email string) (dom
 	return r.entityToDomain(u), nil
 }
 
-func (r *UserRepository) FindUserById(ctx context.Context, id int64) (domain.User, error) {
+func (r *CachedUserRepository) FindUserById(ctx context.Context, id int64) (domain.User, error) {
 	u, err := r.cache.Get(ctx, id)
 	if err == nil {
 		return u, err
@@ -63,7 +70,7 @@ func (r *UserRepository) FindUserById(ctx context.Context, id int64) (domain.Use
 	return u, nil
 }
 
-func (r *UserRepository) FindUserByPhone(ctx context.Context, phone string) (domain.User, error) {
+func (r *CachedUserRepository) FindUserByPhone(ctx context.Context, phone string) (domain.User, error) {
 	u, err := r.dao.FindUserByPhone(ctx, phone)
 	if err != nil {
 		return domain.User{}, err
@@ -72,7 +79,7 @@ func (r *UserRepository) FindUserByPhone(ctx context.Context, phone string) (dom
 	return r.entityToDomain(u), nil
 }
 
-func (r *UserRepository) domainToEntity(u domain.User) dao.User {
+func (r *CachedUserRepository) domainToEntity(u domain.User) dao.User {
 	return dao.User{
 		Id: u.Id,
 		Email: sql.NullString{
@@ -88,7 +95,7 @@ func (r *UserRepository) domainToEntity(u domain.User) dao.User {
 	}
 }
 
-func (r *UserRepository) entityToDomain(u dao.User) domain.User {
+func (r *CachedUserRepository) entityToDomain(u dao.User) domain.User {
 	return domain.User{
 		Id:       u.Id,
 		Email:    u.Email.String,
