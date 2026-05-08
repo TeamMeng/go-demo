@@ -76,9 +76,7 @@ func initUser(server *gin.Engine, db *gorm.DB) {
 	// 	Build(),
 	// )
 
-	redisClient := redis.NewClient(&redis.Options{
-		Addr: "localhost:6379",
-	})
+	redisClient := initRedis()
 
 	server.Use(ratelimit.NewBuilder(ratelimit.NewRedisSlidingWindowLimiter(redisClient, time.Minute, 200)).Build())
 
@@ -103,4 +101,11 @@ func initUser(server *gin.Engine, db *gorm.DB) {
 	codeSvc := service.NewCodeService(codeRepo, smsSvc)
 	u := NewUserHandler(svc, codeSvc)
 	u.RegisterRoutes(server)
+}
+
+func initRedis() redis.Cmdable {
+	redisClient := redis.NewClient(&redis.Options{
+		Addr: "localhost:6379",
+	})
+	return redisClient
 }

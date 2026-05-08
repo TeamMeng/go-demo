@@ -77,7 +77,7 @@ func (svc *UserService) FindOrCreate(ctx context.Context, phone string) (domain.
 		Phone: phone,
 	}
 	err = svc.repo.Create(ctx, u)
-	if err != nil {
+	if err != nil && err != repository.ErrUserDuplicalicate {
 		return u, err
 	}
 
