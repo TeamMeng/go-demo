@@ -3,6 +3,10 @@ module github.com/TeamMeng/go-demo/webook
 go 1.26.0
 
 require (
+	github.com/alibabacloud-go/darabonba-openapi/v2 v2.1.16
+	github.com/alibabacloud-go/dypnsapi-20170525/v3 v3.0.0
+	github.com/alibabacloud-go/tea v1.4.0
+	github.com/aliyun/credentials-go v1.4.12
 	github.com/dlclark/regexp2 v1.12.0
 	github.com/gin-contrib/cors v1.7.7
 	github.com/gin-contrib/sessions v1.1.0
@@ -16,6 +20,15 @@ require (
 	golang.org/x/crypto v0.50.0
 	gorm.io/driver/mysql v1.6.0
 	gorm.io/gorm v1.31.1
+)
+
+require (
+	github.com/alibabacloud-go/alibabacloud-gateway-spi v0.0.5 // indirect
+	github.com/alibabacloud-go/debug v1.0.1 // indirect
+	github.com/alibabacloud-go/tea-utils/v2 v2.0.7 // indirect
+	github.com/clbanning/mxj/v2 v2.7.0 // indirect
+	github.com/tjfoc/gmsm v1.4.1 // indirect
+	gopkg.in/ini.v1 v1.67.0 // indirect
 )
 
 require (
@@ -33,6 +46,7 @@ require (
 	github.com/go-playground/validator/v10 v10.30.1 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/goccy/go-yaml v1.19.2 // indirect
+	github.com/google/wire v0.7.0
 	github.com/gorilla/context v1.1.2 // indirect
 	github.com/gorilla/securecookie v1.1.2 // indirect
 	github.com/gorilla/sessions v1.4.0 // indirect
