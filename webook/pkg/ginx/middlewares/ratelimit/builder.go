@@ -1,46 +1,28 @@
 package ratelimit
 
 import (
-	"github.com/TeamMeng/go-demo/webook/internal/ratelimit"
+	"fmt"
 	"log"
 	"net/http"
-	"strings"
 
+	"github.com/TeamMeng/go-demo/webook/pkg/ratelimit"
 	"github.com/gin-gonic/gin"
 )
 
 type Builder struct {
-	limiter  ratelimit.Limiter
-	genKeyFn func(ctx *gin.Context) string
-	logFn    func(msg any, args ...any)
+	prefix  string
+	limiter ratelimit.Limiter
 }
 
 func NewBuilder(limiter ratelimit.Limiter) *Builder {
 	return &Builder{
 		limiter: limiter,
-		genKeyFn: func(ctx *gin.Context) string {
-			var b strings.Builder
-			b.WriteString("ip-limiter")
-			b.WriteString(":")
-			b.WriteString(ctx.ClientIP())
-			return b.String()
-		},
-		logFn: func(msg any, args ...any) {
-			v := make([]any, 0, len(args)+1)
-			v = append(v, msg)
-			v = append(v, args...)
-			log.Println(v...)
-		},
+		prefix:  "ip-limiter",
 	}
 }
 
-func (b *Builder) SetKeyGenFunc(fn func(*gin.Context) string) *Builder {
-	b.genKeyFn = fn
-	return b
-}
-
-func (b *Builder) SetLogFunc(fn func(msg any, args ...any)) *Builder {
-	b.logFn = fn
+func (b *Builder) Prefix(prefix string) *Builder {
+	b.prefix = prefix
 	return b
 }
 
@@ -48,7 +30,7 @@ func (b *Builder) Build() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		limiter, err := b.limit(ctx)
 		if err != nil {
-			b.logFn(err)
+			log.Println(err)
 			ctx.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
@@ -61,5 +43,6 @@ func (b *Builder) Build() gin.HandlerFunc {
 }
 
 func (b *Builder) limit(ctx *gin.Context) (bool, error) {
-	return b.limiter.Limit(ctx, b.genKeyFn(ctx))
+	key := fmt.Sprintf("%s:%s", b.prefix, ctx.ClientIP())
+	return b.limiter.Limit(ctx, key)
 }

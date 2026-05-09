@@ -11,6 +11,7 @@ import (
 	"github.com/TeamMeng/go-demo/webook/internal/service/sms/memory"
 	"github.com/TeamMeng/go-demo/webook/internal/web/middleware"
 	"github.com/TeamMeng/go-demo/webook/pkg/ginx/middlewares/ratelimit"
+	pkgratelimit "github.com/TeamMeng/go-demo/webook/pkg/ratelimit"
 	"github.com/gin-contrib/cors"
 	"github.com/redis/go-redis/v9"
 
@@ -78,7 +79,7 @@ func initUser(server *gin.Engine, db *gorm.DB) {
 
 	redisClient := initRedis()
 
-	server.Use(ratelimit.NewBuilder(ratelimit.NewRedisSlidingWindowLimiter(redisClient, time.Minute, 200)).Build())
+	server.Use(ratelimit.NewBuilder(pkgratelimit.NewRedisSlidingWindowLimiter(redisClient, time.Minute, 200)).Build())
 
 	server.Use(middleware.NewLoginJWTMiddlewareBuilder().
 		IgnorePaths("/users/signup").
