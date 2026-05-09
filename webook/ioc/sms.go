@@ -6,5 +6,6 @@ import (
 )
 
 func InitSMSService() sms.Service {
-	return memory.NewService()
+	svc := memory.NewService()
+	return svc
 }
