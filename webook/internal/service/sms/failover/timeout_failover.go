@@ -25,7 +25,7 @@ func NewTimeoutFailoverSMSService(svcs []sms.Service) sms.Service {
 }
 
 func (t *TimeoutFailoverSMSService) Send(ctx context.Context,
-	tpl string, args []string, numbers ...string) error {
+	biz string, args []string, numbers ...string) error {
 	idx := atomic.LoadInt32(&t.idx)
 	cnt := atomic.LoadInt32(&t.cnt)
 
@@ -38,7 +38,7 @@ func (t *TimeoutFailoverSMSService) Send(ctx context.Context,
 	}
 
 	svc := t.svcs[idx]
-	err := svc.Send(ctx, tpl, args, numbers...)
+	err := svc.Send(ctx, biz, args, numbers...)
 	switch err {
 	case nil:
 		atomic.StoreInt32(&t.cnt, 0)

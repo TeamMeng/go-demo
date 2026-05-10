@@ -43,7 +43,7 @@ func CreateClient() (*dypnsapi.Client, error) {
 	return client, nil
 }
 
-func (s *Service) Send(ctx context.Context, tpl string, args []string, numbers ...string) error {
+func (s *Service) Send(ctx context.Context, biz string, args []string, numbers ...string) error {
 	paramMap := make(map[string]string)
 	keys := []string{"code", "min", "time", "name", "product"}
 	for i, arg := range args {
@@ -61,7 +61,7 @@ func (s *Service) Send(ctx context.Context, tpl string, args []string, numbers .
 
 	for _, number := range numbers {
 		phoneNumber := number
-		templateCode := tpl
+		templateCode := biz
 		templateParam := string(paramJSON)
 		req := &dypnsapi.SendSmsVerifyCodeRequest{
 			PhoneNumber:   &phoneNumber,
