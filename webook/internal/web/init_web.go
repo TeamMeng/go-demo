@@ -81,7 +81,7 @@ func initUser(server *gin.Engine, db *gorm.DB) {
 
 	server.Use(ratelimit.NewBuilder(pkgratelimit.NewRedisSlidingWindowLimiter(redisClient, time.Minute, 200)).Build())
 
-	server.Use(middleware.NewLoginJWTMiddlewareBuilder().
+	server.Use(middleware.NewLoginJWTMiddlewareBuilder(redisClient).
 		IgnorePaths("/users/signup").
 		IgnorePaths("/users/login").
 		IgnorePaths("/users/loginJWT").

@@ -24,7 +24,7 @@ func InitMiddlewares(redisClient redis.Cmdable) []gin.HandlerFunc {
 	return []gin.HandlerFunc{
 		corsHdl(),
 
-		middleware.NewLoginJWTMiddlewareBuilder().
+		middleware.NewLoginJWTMiddlewareBuilder(redisClient).
 			IgnorePaths("/users/signup").
 			IgnorePaths("/users/login").
 			IgnorePaths("/users/loginJWT").
