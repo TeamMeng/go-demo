@@ -30,6 +30,7 @@ func InitMiddlewares(redisClient redis.Cmdable) []gin.HandlerFunc {
 			IgnorePaths("/users/loginJWT").
 			IgnorePaths("/users/login_sms/code/send").
 			IgnorePaths("/users/login_sms").
+			IgnorePaths("/users/refresh_token").
 			Build(),
 
 		ratelimit.NewBuilder(pkgratelimit.NewRedisSlidingWindowLimiter(redisClient, time.Minute, 200)).Build(),
@@ -40,7 +41,7 @@ func corsHdl() gin.HandlerFunc {
 	return cors.New(cors.Config{
 		AllowHeaders:     []string{"Content-Type", "Authorization"},
 		AllowCredentials: true,
-		ExposeHeaders:    []string{"x-jwt-token"},
+		ExposeHeaders:    []string{"x-jwt-token", "x-refresh-token"},
 		AllowOriginFunc: func(origin string) bool {
 			if strings.HasPrefix(origin, "http://localhost") {
 				return true

@@ -78,15 +78,18 @@ POST http://localhost:8080/users/login_sms/code/send
 Content-Type: application/json
 
 {
-    "phone": "12345678905"
+    "phone": "12345678911"
 }
 
 ### verify sms code
 POST http://localhost:8080/users/login_sms/
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NzgyMDI1MjQsIlVpZCI6MTIzLCJVc2VyQWdlbnQiOiJ2c2NvZGUtcmVzdGNsaWVudCJ9.yC-T4Rup4GP1h1o_3JbWiUy0x-7N1nsH89v6JrHoVgLKb4KUiY2TxRaCTNQtEaQ247Dj4C1B5UtIbTa3D8z4KA
 
 {
-    "phone": "12345678905",
-    "code": "369562"
+    "phone": "12345678911",
+    "code": "702470"
 }
+
+### refresh token
+POST http://localhost:8080/users/refresh_token
+Authorization: Bearer eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3Nzg2NjQ3NzUsIlVpZCI6MTJ9.ZKlF_QDahAZv_snLN3K9tjI_C1Id-Ghh-yl6i8QvKe_ryNCpD4pNWjbXf1v_tbLMYENA9tWfecQg9YdOhpbNGg

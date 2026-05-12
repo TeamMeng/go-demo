@@ -87,6 +87,7 @@ func initUser(server *gin.Engine, db *gorm.DB) {
 		IgnorePaths("/users/loginJWT").
 		IgnorePaths("/users/login_sms/code/send").
 		IgnorePaths("/users/login_sms").
+		IgnorePaths("/users/refresh_token").
 		Build(),
 	)
 

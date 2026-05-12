@@ -3,8 +3,10 @@ package ratelimit
 import (
 	"context"
 	_ "embed"
+	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -28,6 +30,10 @@ func NewRedisSlidingWindowLimiter(cmd redis.Cmdable, interval time.Duration, rat
 }
 
 func (r *RedisSlidingWindowLimiter) Limit(ctx context.Context, key string) (bool, error) {
+	uid, err := uuid.NewUUID()
+	if err != nil {
+		return false, fmt.Errorf("generate uuid failed: %v", err)
+	}
 	return r.cmd.Eval(ctx, luaSlideWindow, []string{key},
-		r.interval.Milliseconds(), time.Now().UnixMilli(), r.rate).Bool()
+		r.interval.Milliseconds(), r.rate, time.Now().UnixMilli(), uid.String()).Bool()
 }

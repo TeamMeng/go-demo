@@ -4,7 +4,6 @@ import (
 	"errors"
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/TeamMeng/go-demo/webook/internal/domain"
 	"github.com/TeamMeng/go-demo/webook/internal/service"
@@ -22,6 +21,7 @@ type UserHandler struct {
 	codeSvc     service.CodeService
 	emailExp    *regexp2.Regexp
 	passwordExp *regexp2.Regexp
+	jwtHandler  jwtHandler
 }
 
 func NewUserHandler(svc service.UserService, codeSvc service.CodeService) *UserHandler {
@@ -36,6 +36,7 @@ func NewUserHandler(svc service.UserService, codeSvc service.CodeService) *UserH
 		codeSvc:     codeSvc,
 		emailExp:    emailExp,
 		passwordExp: passwordExp,
+		jwtHandler:  newJwtHandler(),
 	}
 }
 
@@ -48,7 +49,8 @@ func (u *UserHandler) RegisterRoutes(server *gin.Engine) {
 		GET("/logout", u.Logout).
 		POST("/loginJWT", u.LoginJWT).
 		POST("/login_sms/code/send", u.SendLoginSMS).
-		POST("/login_sms", u.LoginSMS)
+		POST("/login_sms", u.LoginSMS).
+		POST("/refresh_token", u.RefreshToken)
 }
 
 func (u *UserHandler) Signup(ctx *gin.Context) {
@@ -197,7 +199,15 @@ func (u *UserHandler) LoginJWT(ctx *gin.Context) {
 		return
 	}
 
-	if err := u.setJWTToken(ctx, user.Id); err != nil {
+	if err := u.jwtHandler.setJWTToken(ctx, user.Id); err != nil {
+		ctx.JSON(http.StatusInternalServerError, Result{
+			Code: 5,
+			Msg:  "system error",
+		})
+		return
+	}
+
+	if err := u.jwtHandler.setRefreshToken(ctx, user.Id); err != nil {
 		ctx.JSON(http.StatusInternalServerError, Result{
 			Code: 5,
 			Msg:  "system error",
@@ -232,13 +242,16 @@ func (u *UserHandler) SendLoginSMS(ctx *gin.Context) {
 			Code: 5,
 			Msg:  "system err",
 		})
-
+		return
 	}
 
-	u.svc.FindOrCreate(ctx, req.Phone)
-
-	if err := u.setJWTToken(ctx, 123); err != nil {
-
+	_, err := u.svc.FindOrCreate(ctx, req.Phone)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, Result{
+			Code: 4,
+			Msg:  "system err",
+		})
+		return
 	}
 
 	ctx.JSON(http.StatusOK, Result{
@@ -284,6 +297,7 @@ func (u *UserHandler) LoginSMS(ctx *gin.Context) {
 			Code: 4,
 			Msg:  "verify code error",
 		})
+		return
 	}
 
 	user, err := u.svc.FindOrCreate(ctx, req.Phone)
@@ -295,28 +309,37 @@ func (u *UserHandler) LoginSMS(ctx *gin.Context) {
 		return
 	}
 
-	u.setJWTToken(ctx, user.Id)
+	u.jwtHandler.setJWTToken(ctx, user.Id)
+	u.jwtHandler.setRefreshToken(ctx, user.Id)
 
 	ctx.JSON(http.StatusOK, Result{
 		Msg: "code verify successfully",
 	})
 }
 
-func (u *UserHandler) setJWTToken(ctx *gin.Context, uid int64) error {
-	claims := middleware.UserClaims{
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute)),
-		},
-		Uid:       uid,
-		UserAgent: ctx.Request.UserAgent(),
+func (u *UserHandler) RefreshToken(ctx *gin.Context) {
+	refreshToken := middleware.ExtractToken(ctx)
+	var rc RefreshClaims
+	token, err := jwt.ParseWithClaims(refreshToken, &rc, func(t *jwt.Token) (any, error) {
+		return u.jwtHandler.rtKey, nil
+	})
+	if err != nil || !token.Valid {
+		ctx.JSON(http.StatusUnauthorized, Result{
+			Code: 4,
+			Msg:  "Token Unauthorized",
+		})
+		return
 	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS512, claims)
-	tokenStr, err := token.SignedString([]byte("EP4UNRkorqfjiac2bt6CVH1QuCEYlISP"))
+	err = u.jwtHandler.setJWTToken(ctx, rc.Uid)
 	if err != nil {
-		return err
+		ctx.JSON(http.StatusInternalServerError, Result{
+			Code: 5,
+			Msg:  "system error",
+		})
+		return
 	}
 
-	ctx.Header("x-jwt-token", tokenStr)
-	return nil
+	ctx.JSON(http.StatusOK, Result{
+		Msg: "refresh successfully",
+	})
 }
