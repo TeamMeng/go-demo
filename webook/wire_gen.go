@@ -12,6 +12,7 @@ import (
 	"github.com/TeamMeng/go-demo/webook/internal/repository/dao"
 	"github.com/TeamMeng/go-demo/webook/internal/service"
 	"github.com/TeamMeng/go-demo/webook/internal/web"
+	"github.com/TeamMeng/go-demo/webook/internal/web/jwt"
 	"github.com/TeamMeng/go-demo/webook/ioc"
 	"github.com/gin-gonic/gin"
 )
@@ -20,7 +21,8 @@ import (
 
 func InitWebServer() *gin.Engine {
 	cmdable := ioc.InitRedis()
-	v := ioc.InitMiddlewares(cmdable)
+	handler := jwt.NewRedisJWT(cmdable)
+	v := ioc.InitMiddlewares(cmdable, handler)
 	db := ioc.InitDB()
 	userDAO := dao.NewUserDAO(db)
 	userCache := cache.NewUserCache(cmdable)
@@ -30,7 +32,7 @@ func InitWebServer() *gin.Engine {
 	codeRepository := repository.NewCodeRepository(codeCache)
 	smsService := ioc.InitSMSService()
 	codeService := service.NewCodeService(codeRepository, smsService)
-	userHandler := web.NewUserHandler(userService, codeService)
+	userHandler := web.NewUserHandler(userService, codeService, handler)
 	engine := ioc.InitGin(v, userHandler)
 	return engine
 }

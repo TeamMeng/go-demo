@@ -2,14 +2,12 @@ package web
 
 import (
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/TeamMeng/go-demo/webook/internal/domain"
 	"github.com/TeamMeng/go-demo/webook/internal/service"
-	"github.com/TeamMeng/go-demo/webook/internal/web/middleware"
+	ijwt "github.com/TeamMeng/go-demo/webook/internal/web/jwt"
 	"github.com/dlclark/regexp2"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
@@ -24,11 +22,11 @@ type UserHandler struct {
 	codeSvc     service.CodeService
 	emailExp    *regexp2.Regexp
 	passwordExp *regexp2.Regexp
-	jwtHandler  jwtHandler
-	cmd         redis.Cmdable
+	ijwt.Handler
+	cmd redis.Cmdable
 }
 
-func NewUserHandler(svc service.UserService, codeSvc service.CodeService) *UserHandler {
+func NewUserHandler(svc service.UserService, codeSvc service.CodeService, jwtHdl ijwt.Handler) *UserHandler {
 	const (
 		emailRegexPattern    = `^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`
 		passwordRegexPattern = `^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#\$%\^&\*]).{8,}$`
@@ -40,7 +38,7 @@ func NewUserHandler(svc service.UserService, codeSvc service.CodeService) *UserH
 		codeSvc:     codeSvc,
 		emailExp:    emailExp,
 		passwordExp: passwordExp,
-		jwtHandler:  newJwtHandler(),
+		Handler:     jwtHdl,
 	}
 }
 
@@ -161,7 +159,7 @@ func (u *UserHandler) Profile(ctx *gin.Context) {
 		return
 	}
 
-	claims, ok := c.(*middleware.UserClaims)
+	claims, ok := c.(*ijwt.UserClaims)
 	if !ok {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "system error"})
 		return
@@ -204,7 +202,7 @@ func (u *UserHandler) LoginJWT(ctx *gin.Context) {
 		return
 	}
 
-	if err := u.jwtHandler.setLoginToken(ctx, user.Id); err != nil {
+	if err := u.Handler.SetLoginToken(ctx, user.Id); err != nil {
 		ctx.JSON(http.StatusInternalServerError, Result{
 			Code: 5,
 			Msg:  "system error",
@@ -306,7 +304,7 @@ func (u *UserHandler) LoginSMS(ctx *gin.Context) {
 		return
 	}
 
-	u.jwtHandler.setLoginToken(ctx, user.Id)
+	u.Handler.SetLoginToken(ctx, user.Id)
 
 	ctx.JSON(http.StatusOK, Result{
 		Msg: "code verify successfully",
@@ -314,11 +312,10 @@ func (u *UserHandler) LoginSMS(ctx *gin.Context) {
 }
 
 func (u *UserHandler) RefreshToken(ctx *gin.Context) {
-
-	refreshToken := middleware.ExtractToken(ctx)
-	var rc RefreshClaims
+	refreshToken := u.Handler.ExtractToken(ctx)
+	var rc ijwt.RefreshClaims
 	token, err := jwt.ParseWithClaims(refreshToken, &rc, func(t *jwt.Token) (any, error) {
-		return u.jwtHandler.rtKey, nil
+		return ijwt.RtKey, nil
 	})
 	if err != nil || !token.Valid {
 		ctx.JSON(http.StatusUnauthorized, Result{
@@ -328,13 +325,12 @@ func (u *UserHandler) RefreshToken(ctx *gin.Context) {
 		return
 	}
 
-	logout, err := u.cmd.Exists(ctx, fmt.Sprintf("users:ssid:%s", rc.Ssid)).Result()
-	if err != nil || logout > 0 {
+	if err := u.Handler.CheckSession(ctx, rc.Ssid); err != nil {
 		ctx.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
 
-	err = u.jwtHandler.setJWTToken(ctx, rc.Uid, rc.Ssid)
+	err = u.Handler.SetJWTToken(ctx, rc.Uid, rc.Ssid)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, Result{
 			Code: 5,
@@ -349,12 +345,8 @@ func (u *UserHandler) RefreshToken(ctx *gin.Context) {
 }
 
 func (u *UserHandler) LogoutHandler(ctx *gin.Context) {
-	ctx.Header("x-jwt-token", "")
-	ctx.Header("x-refresh-token", "")
+	err := u.Handler.ClearToken(ctx)
 
-	claims := ctx.MustGet("claims").(*middleware.UserClaims)
-
-	err := u.cmd.Set(ctx, fmt.Sprintf("users:ssid:%s", claims.Ssid), "", time.Hour*24*7).Err()
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, Result{
 			Code: 5,

@@ -9,6 +9,7 @@ import (
 	"github.com/TeamMeng/go-demo/webook/internal/repository/dao"
 	"github.com/TeamMeng/go-demo/webook/internal/service"
 	"github.com/TeamMeng/go-demo/webook/internal/service/sms/memory"
+	"github.com/TeamMeng/go-demo/webook/internal/web/jwt"
 	"github.com/TeamMeng/go-demo/webook/internal/web/middleware"
 	"github.com/TeamMeng/go-demo/webook/pkg/ginx/middlewares/ratelimit"
 	pkgratelimit "github.com/TeamMeng/go-demo/webook/pkg/ratelimit"
@@ -78,10 +79,11 @@ func initUser(server *gin.Engine, db *gorm.DB) {
 	// )
 
 	redisClient := initRedis()
+	jwtHandler := jwt.NewRedisJWT(redisClient)
 
 	server.Use(ratelimit.NewBuilder(pkgratelimit.NewRedisSlidingWindowLimiter(redisClient, time.Minute, 200)).Build())
 
-	server.Use(middleware.NewLoginJWTMiddlewareBuilder(redisClient).
+	server.Use(middleware.NewLoginJWTMiddlewareBuilder(jwtHandler).
 		IgnorePaths("/users/signup").
 		IgnorePaths("/users/login").
 		IgnorePaths("/users/loginJWT").
@@ -101,7 +103,7 @@ func initUser(server *gin.Engine, db *gorm.DB) {
 
 	svc := service.NewUserService(repo)
 	codeSvc := service.NewCodeService(codeRepo, smsSvc)
-	u := NewUserHandler(svc, codeSvc)
+	u := NewUserHandler(svc, codeSvc, jwtHandler)
 	u.RegisterRoutes(server)
 }
 

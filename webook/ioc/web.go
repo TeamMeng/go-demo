@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/TeamMeng/go-demo/webook/internal/web"
+	"github.com/TeamMeng/go-demo/webook/internal/web/jwt"
 	"github.com/TeamMeng/go-demo/webook/internal/web/middleware"
 	"github.com/TeamMeng/go-demo/webook/pkg/ginx/middlewares/ratelimit"
 	pkgratelimit "github.com/TeamMeng/go-demo/webook/pkg/ratelimit"
@@ -20,11 +21,11 @@ func InitGin(mdls []gin.HandlerFunc, hld *web.UserHandler) *gin.Engine {
 	return server
 }
 
-func InitMiddlewares(redisClient redis.Cmdable) []gin.HandlerFunc {
+func InitMiddlewares(redisClient redis.Cmdable, jwtHandler jwt.Handler) []gin.HandlerFunc {
 	return []gin.HandlerFunc{
 		corsHdl(),
 
-		middleware.NewLoginJWTMiddlewareBuilder(redisClient).
+		middleware.NewLoginJWTMiddlewareBuilder(jwtHandler).
 			IgnorePaths("/users/signup").
 			IgnorePaths("/users/login").
 			IgnorePaths("/users/loginJWT").
