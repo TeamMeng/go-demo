@@ -3,3 +3,6 @@ extend-ignore-re = []
 
 [default.extend-words]
 wrk = "wrk"
+
+[files]
+extend-exclude = ["webook/go.sum", "webook/go.mod"]
