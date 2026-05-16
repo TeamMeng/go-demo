@@ -1,16 +1,22 @@
 services:
-    mysql:
-        image: mysql:8.0
-        restart: always
-        environment:
-            MYSQL_ROOT_PASSWORD: root
-        volumes:
-            - ./script/mysql/:/docker-entrypoint-initdb.d/
-        ports:
-            - "3306:3306"
-    redis:
-        image: redis:latest
-        environment:
-            ALLOW_EMPTY_PASSWORD: "yes"
-        ports:
-            - "6379:6379"
+  mysql:
+    image: mysql:8.0
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - ./script/mysql/:/docker-entrypoint-initdb.d/
+    ports:
+      - "3306:3306"
+  redis:
+    image: redis:latest
+    environment:
+      ALLOW_EMPTY_PASSWORD: "yes"
+    ports:
+      - "6379:6379"
+  etcd:
+    image: "bitnamilegacy/etcd:3.5.16"
+    ports:
+      - "2379:2379"
+    environment:
+      - ALLOW_NONE_AUTHENTICATION=yes

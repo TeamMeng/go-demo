@@ -23,6 +23,7 @@ func main() {
 }
 
 func initViper() {
+	// viper.SetDefault("db.mysql.dsn", "root:root@tcp(localhost:3306)/webook")
 	viper.SetConfigName("dev")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath("./config")
