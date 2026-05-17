@@ -1,6 +1,13 @@
 package main
 
-import "github.com/spf13/viper"
+import (
+	"fmt"
+
+	"github.com/fsnotify/fsnotify"
+	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
+	_ "github.com/spf13/viper/remote"
+)
 
 // "net/http"
 
@@ -16,7 +23,7 @@ func main() {
 	// 	ctx.JSON(http.StatusOK, gin.H{"message": "Hello World"})
 	// })
 	//
-	initViper()
+	initViperRemote()
 	server := InitWebServer()
 
 	server.Run(":8080")
@@ -27,6 +34,31 @@ func initViper() {
 	viper.SetConfigName("dev")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath("./config")
+	if err := viper.ReadInConfig(); err != nil {
+		panic(err)
+	}
+}
+
+func initViperRemote() {
+	if err := viper.AddRemoteProvider("etcd3", "127.0.0.1:2379", "/webook"); err != nil {
+		panic(err)
+	}
+	viper.SetConfigType("yaml")
+	if err := viper.ReadRemoteConfig(); err != nil {
+		panic(err)
+	}
+}
+
+func initViperWatch() {
+	cfile := pflag.String("config", "config/config.yaml", "Configuration file path")
+	pflag.Parse()
+	viper.SetConfigFile(*cfile)
+
+	viper.WatchConfig()
+	viper.OnConfigChange(func(in fsnotify.Event) {
+		fmt.Println(in.Name, in.Op)
+	})
+
 	if err := viper.ReadInConfig(); err != nil {
 		panic(err)
 	}

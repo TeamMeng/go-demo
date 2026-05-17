@@ -1,6 +1,8 @@
 package ioc
 
 import (
+	"fmt"
+
 	"github.com/TeamMeng/go-demo/webook/internal/repository/dao"
 	"github.com/spf13/viper"
 	"gorm.io/driver/mysql"
@@ -12,8 +14,13 @@ func InitDB() *gorm.DB {
 		DSN string `yaml:"dsn"`
 	}
 	var cfg Config
-	if err := viper.UnmarshalKey("db.mysql", &cfg); err != nil {
+	if err := viper.UnmarshalKey("db", &cfg); err != nil {
 		panic(err)
+	}
+	if cfg.DSN == "" {
+		panic("missing config: db.dsn")
+	} else {
+		fmt.Println(cfg.DSN)
 	}
 
 	db, err := gorm.Open(mysql.Open(cfg.DSN))
