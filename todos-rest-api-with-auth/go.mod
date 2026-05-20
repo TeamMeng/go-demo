@@ -3,7 +3,7 @@ module todo_api
 go 1.25.0
 
 require (
-	github.com/IBM/sarama v1.48.0
+	github.com/IBM/sarama v1.49.0
 	github.com/alibabacloud-go/darabonba-openapi/v2 v2.1.16
 	github.com/alibabacloud-go/tea v1.4.0
 	github.com/aliyun/credentials-go v1.4.12
@@ -37,6 +37,7 @@ require (
 	github.com/pierrec/lz4/v4 v4.1.26 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20250401214520-65e299d6c5c9 // indirect
+	github.com/rogpeppe/go-internal v1.13.1 // indirect
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.3.93 // indirect
 	github.com/tjfoc/gmsm v1.4.1 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
@@ -76,7 +77,7 @@ require (
 	github.com/ugorji/go/codec v1.3.1 // indirect
 	go.mongodb.org/mongo-driver/v2 v2.6.0 // indirect
 	golang.org/x/arch v0.26.0 // indirect
-	golang.org/x/net v0.53.0 // indirect
+	golang.org/x/net v0.54.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/sys v0.44.0 // indirect
 	golang.org/x/text v0.37.0 // indirect
