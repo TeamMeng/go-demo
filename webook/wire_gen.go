@@ -15,6 +15,7 @@ import (
 	"github.com/TeamMeng/go-demo/webook/internal/web/jwt"
 	"github.com/TeamMeng/go-demo/webook/ioc"
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 // Injectors from wire.go:
@@ -27,7 +28,7 @@ func InitWebServer() *gin.Engine {
 	userDAO := dao.NewUserDAO(db)
 	userCache := cache.NewUserCache(cmdable)
 	userRepository := repository.NewUserRepository(userDAO, userCache)
-	userService := service.NewUserService(userRepository)
+	userService := service.NewUserService(userRepository, zap.NewExample())
 	codeCache := cache.NewCodeCache(cmdable)
 	codeRepository := repository.NewCodeRepository(codeCache)
 	smsService := ioc.InitSMSService()

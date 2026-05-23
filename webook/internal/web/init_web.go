@@ -15,6 +15,7 @@ import (
 	pkgratelimit "github.com/TeamMeng/go-demo/webook/pkg/ratelimit"
 	"github.com/gin-contrib/cors"
 	"github.com/redis/go-redis/v9"
+	"go.uber.org/zap"
 
 	// "github.com/gin-contrib/sessions"
 	// "github.com/gin-contrib/sessions/redis"
@@ -101,7 +102,7 @@ func initUser(server *gin.Engine, db *gorm.DB) {
 	ud := dao.NewUserDAO(db)
 	repo := repository.NewUserRepository(ud, cache)
 
-	svc := service.NewUserService(repo)
+	svc := service.NewUserService(repo, zap.NewExample())
 	codeSvc := service.NewCodeService(codeRepo, smsSvc)
 	u := NewUserHandler(svc, codeSvc, jwtHandler)
 	u.RegisterRoutes(server)

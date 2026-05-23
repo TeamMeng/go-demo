@@ -1,12 +1,13 @@
 package main
 
 import (
-	"fmt"
-
-	"github.com/fsnotify/fsnotify"
-	"github.com/spf13/pflag"
+	// "fmt"
+	//
+	// "github.com/fsnotify/fsnotify"
+	// "github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	_ "github.com/spf13/viper/remote"
+	"go.uber.org/zap"
 )
 
 // "net/http"
@@ -23,7 +24,9 @@ func main() {
 	// 	ctx.JSON(http.StatusOK, gin.H{"message": "Hello World"})
 	// })
 	//
-	initViperRemote()
+	// initViperRemote()
+	initViper()
+	initLogger()
 	server := InitWebServer()
 
 	server.Run(":8080")
@@ -39,27 +42,36 @@ func initViper() {
 	}
 }
 
-func initViperRemote() {
-	if err := viper.AddRemoteProvider("etcd3", "127.0.0.1:2379", "/webook"); err != nil {
+func initLogger() {
+	logger, err := zap.NewDevelopment()
+	if err != nil {
 		panic(err)
 	}
-	viper.SetConfigType("yaml")
-	if err := viper.ReadRemoteConfig(); err != nil {
-		panic(err)
-	}
+	zap.ReplaceGlobals(logger)
+	zap.L().Info("Init successflully")
 }
 
-func initViperWatch() {
-	cfile := pflag.String("config", "config/config.yaml", "Configuration file path")
-	pflag.Parse()
-	viper.SetConfigFile(*cfile)
+// func initViperRemote() {
+// 	if err := viper.AddRemoteProvider("etcd3", "127.0.0.1:2379", "/webook"); err != nil {
+// 		panic(err)
+// 	}
+// 	viper.SetConfigType("yaml")
+// 	if err := viper.ReadRemoteConfig(); err != nil {
+// 		panic(err)
+// 	}
+// }
 
-	viper.WatchConfig()
-	viper.OnConfigChange(func(in fsnotify.Event) {
-		fmt.Println(in.Name, in.Op)
-	})
-
-	if err := viper.ReadInConfig(); err != nil {
-		panic(err)
-	}
-}
+// func initViperWatch() {
+// 	cfile := pflag.String("config", "config/config.yaml", "Configuration file path")
+// 	pflag.Parse()
+// 	viper.SetConfigFile(*cfile)
+//
+// 	viper.WatchConfig()
+// 	viper.OnConfigChange(func(in fsnotify.Event) {
+// 		fmt.Println(in.Name, in.Op)
+// 	})
+//
+// 	if err := viper.ReadInConfig(); err != nil {
+// 		panic(err)
+// 	}
+// }

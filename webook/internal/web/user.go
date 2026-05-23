@@ -13,6 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/redis/go-redis/v9"
+	"go.uber.org/zap"
 )
 
 const biz = "login"
@@ -237,6 +238,7 @@ func (u *UserHandler) SendLoginSMS(ctx *gin.Context) {
 			Code: 5,
 			Msg:  "system err",
 		})
+		zap.L().Error(err.Error())
 		return
 	}
 
@@ -284,6 +286,7 @@ func (u *UserHandler) LoginSMS(ctx *gin.Context) {
 			Code: 5,
 			Msg:  "system error",
 		})
+		zap.L().Error(err.Error())
 		return
 	}
 
@@ -336,6 +339,10 @@ func (u *UserHandler) RefreshToken(ctx *gin.Context) {
 			Code: 5,
 			Msg:  "system error",
 		})
+		zap.L().Error("set jwt token error",
+			zap.Error(err),
+			zap.String("method", "UserHandler:RefreshToken"),
+		)
 		return
 	}
 

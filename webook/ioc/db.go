@@ -1,12 +1,14 @@
 package ioc
 
 import (
-	"fmt"
+	"log"
+	"time"
 
 	"github.com/TeamMeng/go-demo/webook/internal/repository/dao"
 	"github.com/spf13/viper"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 func InitDB() *gorm.DB {
@@ -19,11 +21,16 @@ func InitDB() *gorm.DB {
 	}
 	if cfg.DSN == "" {
 		panic("missing config: db.dsn")
-	} else {
-		fmt.Println(cfg.DSN)
 	}
 
-	db, err := gorm.Open(mysql.Open(cfg.DSN))
+	db, err := gorm.Open(mysql.Open(cfg.DSN), &gorm.Config{
+		Logger: logger.New(log.Default(), logger.Config{
+			SlowThreshold:        time.Millisecond * 10,
+			Colorful:             true,
+			LogLevel:             logger.Info,
+			ParameterizedQueries: true,
+		}),
+	})
 	if err != nil {
 		panic(err)
 	}
