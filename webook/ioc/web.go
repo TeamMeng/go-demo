@@ -12,12 +12,14 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
+	"go.uber.org/zap"
 )
 
-func InitGin(mdls []gin.HandlerFunc, hld *web.UserHandler) *gin.Engine {
+func InitGin(mdls []gin.HandlerFunc, hld *web.UserHandler, ald *web.ArticleHandler) *gin.Engine {
 	server := gin.Default()
 	server.Use(mdls...)
 	hld.RegisterRoutes(server)
+	ald.RegisterRoutes(server)
 	return server
 }
 
@@ -51,4 +53,9 @@ func corsHdl() gin.HandlerFunc {
 		},
 		MaxAge: 12 * time.Hour,
 	})
+}
+
+func InitLogger() *zap.Logger {
+	logger, _ := zap.NewProduction()
+	return logger
 }

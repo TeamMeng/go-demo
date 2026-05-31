@@ -15,7 +15,10 @@ import (
 	"github.com/TeamMeng/go-demo/webook/internal/web/jwt"
 	"github.com/TeamMeng/go-demo/webook/ioc"
 	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
+)
+
+import (
+	_ "github.com/spf13/viper/remote"
 )
 
 // Injectors from wire.go:
@@ -28,12 +31,15 @@ func InitWebServer() *gin.Engine {
 	userDAO := dao.NewUserDAO(db)
 	userCache := cache.NewUserCache(cmdable)
 	userRepository := repository.NewUserRepository(userDAO, userCache)
-	userService := service.NewUserService(userRepository, zap.NewExample())
+	logger := ioc.InitLogger()
+	userService := service.NewUserService(userRepository, logger)
 	codeCache := cache.NewCodeCache(cmdable)
 	codeRepository := repository.NewCodeRepository(codeCache)
 	smsService := ioc.InitSMSService()
 	codeService := service.NewCodeService(codeRepository, smsService)
 	userHandler := web.NewUserHandler(userService, codeService, handler)
-	engine := ioc.InitGin(v, userHandler)
+	articleService := service.NewArticleService()
+	articleHandler := web.NewArticleHandler(articleService)
+	engine := ioc.InitGin(v, userHandler, articleHandler)
 	return engine
 }

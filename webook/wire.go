@@ -18,6 +18,7 @@ func InitWebServer() *gin.Engine {
 	wire.Build(
 		ioc.InitDB,
 		ioc.InitRedis,
+		ioc.InitLogger,
 
 		dao.NewUserDAO,
 
@@ -29,12 +30,14 @@ func InitWebServer() *gin.Engine {
 
 		service.NewUserService,
 		service.NewCodeService,
+		service.NewArticleService,
 
 		ioc.InitSMSService,
 
 		ijwt.NewRedisJWT,
 
 		web.NewUserHandler,
+		web.NewArticleHandler,
 
 		ioc.InitGin,
 

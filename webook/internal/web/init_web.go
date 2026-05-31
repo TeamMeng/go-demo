@@ -102,7 +102,7 @@ func initUser(server *gin.Engine, db *gorm.DB) {
 	ud := dao.NewUserDAO(db)
 	repo := repository.NewUserRepository(ud, cache)
 
-	svc := service.NewUserService(repo, zap.NewExample())
+	svc := service.NewUserService(repo, InitLogger())
 	codeSvc := service.NewCodeService(codeRepo, smsSvc)
 	u := NewUserHandler(svc, codeSvc, jwtHandler)
 	u.RegisterRoutes(server)
@@ -113,4 +113,9 @@ func initRedis() redis.Cmdable {
 		Addr: "localhost:6379",
 	})
 	return redisClient
+}
+
+func InitLogger() *zap.Logger {
+	logger, _ := zap.NewProduction()
+	return logger
 }
